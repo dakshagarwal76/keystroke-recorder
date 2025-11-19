@@ -1,7 +1,4 @@
-// /api/oauth2callback.js
-const { google } = require('googleapis');
-const fs = require('fs');
-const path = require('path');
+import { google } from 'googleapis';
 
 export default async function handler(req, res) {
   try {
@@ -10,16 +7,36 @@ export default async function handler(req, res) {
       process.env.CLIENT_SECRET,
       process.env.OAUTH_REDIRECT_URI
     );
-    const code = req.query.code || req.body.code;
 
+    const code = req.query.code;
+
+    // Exchange authorization code for tokens
     const { tokens } = await oauth2Client.getToken(code);
 
-    // Save refresh_token so future uploads work!
-    // Use a persistent secure way in production (DB or encrypted Vercel KV or Edge Config)
-    fs.writeFileSync('/tmp/refresh_token.txt', tokens.refresh_token);
-    
-    res.send('🔑 Authentication successful! You can now upload files to your Drive.');
+    // Log tokens for debug
+    console.log('OAuth tokens:', tokens);
+
+    if (!tokens.refresh_token) {
+      // No refresh token means it was previously authorized
+      res.setHeader('Content-Type', 'text/html');
+      res.end(`
+        <h1>No refresh token received</h1>
+        <p>Either you already authorized this app before or something is wrong.</p>
+        <p>Please revoke access to the app in your Google account and try again.</p>
+      `);
+      return;
+    }
+
+    // Show refresh token so you can copy it directly
+    res.setHeader('Content-Type', 'text/html');
+    res.end(`
+      <h1>🔑 Authentication Successful!</h1>
+      <p>Copy your refresh token below and add it as <code>REFRESH_TOKEN</code> in your environment variables:</p>
+      <textarea style="width:100%;height:200px;">${tokens.refresh_token}</textarea>
+      <p>Then redeploy your application.</p>
+    `);
   } catch (error) {
-    res.status(500).send('OAuth failed: ' + error.message);
+    console.error('OAuth callback error:', error);
+    res.status(500).send(`OAuth callback error: ${error.message}`);
   }
 }

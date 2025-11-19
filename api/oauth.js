@@ -1,7 +1,6 @@
-// /api/oauth.js
 const { google } = require('googleapis');
 
-export default async function handler(req, res) {
+export default function handler(req, res) {
   const oauth2Client = new google.auth.OAuth2(
     process.env.CLIENT_ID,
     process.env.CLIENT_SECRET,
@@ -10,10 +9,8 @@ export default async function handler(req, res) {
 
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
+    prompt: 'consent',
     scope: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive'],
-    prompt: 'consent'
   });
-
-  res.writeHead(302, { Location: url });
-  res.end();
+  res.redirect(url);
 }
