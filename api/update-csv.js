@@ -1,20 +1,14 @@
-const { getDriveClient, uploadFile, getFileContent, updateFile } = require('../lib/drive-client');
-const { parse } = require('csv-parse/sync');
-const { stringify } = require('csv-stringify/sync');
+import { getDriveClient, getFileContent, uploadFile, updateFile } from '../lib/googleDriveClient';
+import { parse } from 'csv-parse/sync';
+import { stringify } from 'csv-stringify/sync';
 
-module.exports = async (req, res) => {
-  // CORS headers to allow cross-origin requests
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
+export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    console.log('=== UPDATE CSV START ===');
-
-    // Extract and validate fields from request body
+    const drive = getDriveClient();
+    const rootFolderId = process.env.DRIVE_FOLDER_ID;
     const {
       deviceId,
       participantId,
@@ -28,27 +22,12 @@ module.exports = async (req, res) => {
       typingCategory
     } = req.body;
 
+    // Validate required fields
     if (!deviceId || !participantId || !session) {
-      return res.status(400).json({ error: 'Missing required fields: deviceId, participantId, or session' });
+      return res.status(400).json({ error: 'Missing required fields: deviceId, participantId, session' });
     }
-
-    console.log('CSV data:', {
-      deviceId,
-      participantId,
-      session,
-      totalKeys,
-      typingSpeed,
-      typingCategory
-    });
-
-    // Get authorized Google Drive client
-    const drive = getDriveClient();
-    const rootFolderId = process.env.DRIVE_FOLDER_ID;
-    if (!rootFolderId) {
-      return res.status(500).json({ error: 'DRIVE_FOLDER_ID environment variable not set' });
-    }
-
-    // Try to get existing 'tracking.csv' file content if available
+    
+    // Check for CSV file
     const fileData = await getFileContent(drive, 'tracking.csv', rootFolderId);
     let records = [];
     let csvFileId = null;
@@ -56,20 +35,14 @@ module.exports = async (req, res) => {
     if (fileData) {
       csvFileId = fileData.id;
       const csvContent = typeof fileData.content === 'string' ? fileData.content : fileData.content.toString();
-
       try {
-        // Parse CSV into array of records (objects)
         records = parse(csvContent, { columns: true, skip_empty_lines: true });
-        console.log('Existing records:', records.length);
       } catch (e) {
-        console.log('Error parsing CSV, starting fresh:', e.message);
         records = [];
       }
-    } else {
-      console.log('Creating new tracking.csv file');
     }
 
-    // Prepare new record with all fields coerced as needed
+    // Prepare new record
     const newRecord = {
       timestamp: new Date().toISOString(),
       deviceId,
@@ -87,29 +60,22 @@ module.exports = async (req, res) => {
       deviceType: browserInfo?.deviceType || 'Unknown'
     };
 
-    // Add new record to records array
     records.push(newRecord);
-    console.log('Added new record, total records:', records.length);
 
-    // Convert records back to CSV string content
-    const csvContent = stringify(records, { header: true });
-    const csvBuffer = Buffer.from(csvContent);
+    // Convert records to CSV string with header
+    const csvContentOut = stringify(records, { header: true });
+    const csvBuffer = Buffer.from(csvContentOut);
 
-    // Update or create the CSV file on Google Drive
     if (csvFileId) {
-      console.log('Updating existing CSV file');
       await updateFile(drive, csvFileId, csvBuffer, 'text/csv');
     } else {
-      console.log('Uploading new CSV file');
       await uploadFile(drive, rootFolderId, 'tracking.csv', csvBuffer, 'text/csv');
     }
 
-    console.log('=== UPDATE CSV SUCCESS ===');
     res.json({ success: true, recordCount: records.length });
-
   } catch (error) {
     console.error('=== UPDATE CSV ERROR ===');
     console.error('Error details:', error);
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
-};
+}
