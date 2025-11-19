@@ -1,4 +1,4 @@
-const { getDriveClient, uploadFile, getFileContent, updateFile } = require('../lib/drive-client');
+const { getDriveClient, uploadFile, getFileContent, updateFile } = require('../lib/googleDriveClient');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,11 +11,19 @@ module.exports = async (req, res) => {
   try {
     console.log('=== GET NEXT ID START ===');
     const { deviceId } = req.body;
+    if (!deviceId) {
+      return res.status(400).json({ error: 'Missing deviceId in request body' });
+    }
     console.log('Device ID:', deviceId);
     
+    // Get Drive client authenticated via OAuth2 refresh token
     const drive = getDriveClient();
     const rootFolderId = process.env.DRIVE_FOLDER_ID;
+    if (!rootFolderId) {
+      return res.status(500).json({ error: 'DRIVE_FOLDER_ID environment variable not set' });
+    }
     
+    // Load current counter file contents if exist
     const fileData = await getFileContent(drive, 'counter.json', rootFolderId);
     let counter = { lastId: 0, deviceParticipants: {} };
     let counterFileId = null;
@@ -29,17 +37,16 @@ module.exports = async (req, res) => {
       console.log('Creating new counter');
     }
     
-    // Check if device already has participants
+    // Initialize participants array for this device if missing
     if (!counter.deviceParticipants[deviceId]) {
       counter.deviceParticipants[deviceId] = [];
     }
     
-    // Get or create participant for this device
+    // Participant/session management logic
     let participantId;
     let sessionNumber;
     
     if (counter.deviceParticipants[deviceId].length === 0) {
-      // First participant on this device
       counter.lastId += 1;
       participantId = `U${String(counter.lastId).padStart(3, '0')}`;
       sessionNumber = 1;
@@ -47,21 +54,17 @@ module.exports = async (req, res) => {
       counter.deviceParticipants[deviceId].push({
         participantId,
         sessionCount: 1,
-        lastAccess: new Date().toISOString()
+        lastAccess: new Date().toISOString(),
       });
       
       console.log('New participant created:', participantId);
     } else {
-      // Get last participant and increment session
       const lastParticipant = counter.deviceParticipants[deviceId][counter.deviceParticipants[deviceId].length - 1];
-      
-      // Check if last session was recent (within 1 hour) - if yes, create new participant
       const lastAccessTime = new Date(lastParticipant.lastAccess).getTime();
       const now = Date.now();
       const oneHour = 60 * 60 * 1000;
       
       if (now - lastAccessTime > oneHour) {
-        // New participant (session expired)
         counter.lastId += 1;
         participantId = `U${String(counter.lastId).padStart(3, '0')}`;
         sessionNumber = 1;
@@ -69,12 +72,11 @@ module.exports = async (req, res) => {
         counter.deviceParticipants[deviceId].push({
           participantId,
           sessionCount: 1,
-          lastAccess: new Date().toISOString()
+          lastAccess: new Date().toISOString(),
         });
         
         console.log('New participant (session expired):', participantId);
       } else {
-        // Same participant, increment session
         participantId = lastParticipant.participantId;
         lastParticipant.sessionCount += 1;
         lastParticipant.lastAccess = new Date().toISOString();
@@ -84,6 +86,7 @@ module.exports = async (req, res) => {
       }
     }
     
+    // Serialize counter to buffer and upload/update to Drive
     const counterBuffer = Buffer.from(JSON.stringify(counter, null, 2));
     if (counterFileId) {
       await updateFile(drive, counterFileId, counterBuffer, 'application/json');
@@ -93,7 +96,6 @@ module.exports = async (req, res) => {
     
     console.log('=== GET NEXT ID SUCCESS ===');
     console.log('Result:', { participantId, sessionNumber });
-    
     res.json({ participantId, sessionNumber });
   } catch (error) {
     console.error('=== GET NEXT ID ERROR ===');

@@ -9,17 +9,18 @@ export default async function handler(req, res) {
   try {
     const { deviceFingerprint } = req.body;
 
-    if (!deviceFingerprint) {
-      return res.status(400).json({ error: 'Missing device fingerprint' });
+    if (!deviceFingerprint || typeof deviceFingerprint !== 'string' || deviceFingerprint.trim() === '') {
+      return res.status(400).json({ error: 'Missing or invalid device fingerprint' });
     }
 
     const drive = getDriveClient();
     const folderId = process.env.DRIVE_FOLDER_ID;
 
     if (!folderId) {
-      return res.status(500).json({ error: 'DRIVE_FOLDER_ID not configured' });
+      return res.status(500).json({ error: 'DRIVE_FOLDER_ID environment variable not configured' });
     }
 
+    // Search for existing folder with the device fingerprint name
     const resList = await drive.files.list({
       q: `'${folderId}' in parents and name='${deviceFingerprint}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       fields: 'files(id, name)',
@@ -29,8 +30,10 @@ export default async function handler(req, res) {
     let deviceId;
 
     if (resList.data.files && resList.data.files.length > 0) {
+      // Folder exists, use its ID
       deviceId = resList.data.files[0].id;
     } else {
+      // Create a new folder with device fingerprint name in the root folder
       const resCreate = await drive.files.create({
         requestBody: {
           name: deviceFingerprint,
@@ -45,6 +48,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ deviceId });
   } catch (err) {
     console.error('Register device error:', err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 }
