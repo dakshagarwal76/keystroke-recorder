@@ -6,11 +6,13 @@ export default function handler(req, res) {
     process.env.CLIENT_SECRET,
     process.env.OAUTH_REDIRECT_URI
   );
-
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    prompt: 'consent',
-    scope: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive'],
+    prompt: 'consent',  // Important to force refresh token each time
+    scope: [
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/drive'
+    ],
   });
-  res.redirect(url);
+  return res.redirect(url);
 }

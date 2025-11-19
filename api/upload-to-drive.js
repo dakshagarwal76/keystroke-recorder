@@ -1,29 +1,32 @@
-const { getDriveClient, ensureFolder, uploadFile } = require('../lib/googleDriveClient');
+const { getDriveClient } = require('../lib/googleDriveClient');
 
 export default async function handler(req, res) {
   try {
     const drive = getDriveClient();
 
-    const { deviceId, participantId, session, gender, handedness, zipData, zipFileName } = req.body;
+    // Your payload fields: fileName, mimeType, base64Data ... replace variables accordingly
+    const { zipFileName, zipData } = req.body;
 
-    if (!zipData || !zipFileName) {
-      return res.status(400).json({ error: 'Missing zipData or zipFileName' });
+    if (!zipFileName || !zipData) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const zipBuffer = Buffer.from(zipData, 'base64');
+    const buffer = Buffer.from(zipData, 'base64');
 
-    // Ensure folder structure: root/deviceId/participantId
-    const rootFolderId = process.env.DRIVE_FOLDER_ID;
-    if (!rootFolderId) throw new Error('Missing DRIVE_FOLDER_ID env');
+    const uploadResult = await drive.files.create({
+      requestBody: {
+        name: zipFileName,
+      },
+      media: {
+        mimeType: 'application/zip',
+        body: buffer,
+      },
+      fields: 'id, webViewLink',
+    });
 
-    const deviceFolderId = await ensureFolder(drive, rootFolderId, deviceId);
-    const participantFolderId = await ensureFolder(drive, deviceFolderId, participantId);
-
-    const result = await uploadFile(drive, participantFolderId, zipFileName, zipBuffer, 'application/zip');
-
-    res.json({ success: true, fileId: result.id, webViewLink: result.webViewLink });
+    return res.json({ success: true, id: uploadResult.data.id, link: uploadResult.data.webViewLink });
   } catch (err) {
     console.error('Upload error:', err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 }
