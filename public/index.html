@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Keystroke Sound Recorder (WAV)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Keep all your original CSS styles here -->
+  <style>
+    /* Copy all your CSS from the original file */
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+  <!-- Keep all your original HTML body content here -->
+  
+  <script>
+// Device Detection
+function detectBrowser() {
+  const userAgent = navigator.userAgent;
+  const browsers = [
+    { name: 'Microsoft Edge', test: /Edg/, versionRegex: /Edg\/([0-9.]+)/ },
+    { name: 'Mozilla Firefox', test: /Firefox/, versionRegex: /Firefox\/([0-9.]+)/ },
+    { name: 'Google Chrome', test: /Chrome(?!.*Edg)/, versionRegex: /Chrome\/([0-9.]+)/ },
+    { name: 'Safari', test: /Safari(?!.*Chrome)/, versionRegex: /Version\/([0-9.]+)/ }
+  ];
+  
+  const getVersion = (regex) => {
+    const match = userAgent.match(regex);
+    return match ? match[1] : 'Unknown';
+  };
+  
+  const detectOS = () => {
+    if (/Win/.test(userAgent)) return { name: 'Windows', version: (userAgent.match(/Windows NT ([0-9.]+)/) || [])[1] || 'Unknown' };
+    if (/Mac/.test(userAgent)) return { name: 'MacOS', version: (userAgent.match(/Mac OS X ([0-9._]+)/) || [])[1]?.replace(/_/g, '.') || 'Unknown' };
+    if (/Linux/.test(userAgent)) return { name: 'Linux', version: 'Unknown' };
+    return { name: 'Unknown', version: 'Unknown' };
+  };
+  
+  const detectDeviceType = () => {
+    if (/Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(userAgent)) return 'mobile';
+    if (/Tablet|iPad/i.test(userAgent)) return 'tablet';
+    return 'desktop';
+  };
+  
+  for (const browser of browsers) {
+    if (browser.test.test(userAgent)) {
+      return {
+        name: browser.name,
+        version: getVersion(browser.versionRegex),
+        os: detectOS(),
+        deviceType: detectDeviceType()
+      };
+    }
+  }
+  
+  return {
+    name: 'Unknown',
+    version: 'Unknown',
+    os: detectOS(),
+    deviceType: detectDeviceType()
+  };
+}
+
+function generateDeviceFingerprint() {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.textBaseline = 'top';
+  ctx.font = '14px Arial';
+  ctx.fillText('fingerprint', 2, 2);
+  const canvasData = canvas.toDataURL();
+  
+  const fingerprint = {
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    screenResolution: `${screen.width}x${screen.height}`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    canvas: canvasData.slice(0, 50),
+    platform: navigator.platform
+  };
+  
+  const str = JSON.stringify(fingerprint);
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+const browserInfo = detectBrowser();
+if (browserInfo.deviceType !== 'desktop') {
+  document.body.innerHTML = '<div style="text-align:center;margin-top:100px;"><h1>Access Restricted</h1><p>This application only works on PC/Laptop. Mobile and tablet devices are not supported.</p></div>';
+  throw new Error('Device not supported');
+}
+
+const API_BASE = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000/api'
+  : '/api';
+
+let currentDeviceId = null;
+let currentParticipantId = null;
+
+// Keep all your original recorder variables
+let stream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingEnabled = false;
+let recordingStartPerf = 0;
+const keyEvents = [];
+let sessionMetadata = {};
+const MIN_SLICE_BYTES = 1200;
+const PRE_MS = 60;
+const POST_MS = 200;
+
+const statusEl = document.getElementById('status');
+const keyListEl = document.getElementById('keyList');
+const inputArea = document.getElementById('inputArea');
+const startBtn = document.getElementById('startBtn');
+const stopBtn  = document.getElementById('stopBtn');
+const consentChk = document.getElementById('consentChk');
+const pidEl = document.getElementById('pid');
+const sessionEl = document.getElementById('session');
+const genderEl = document.getElementById('gender');
+const handEl = document.getElementById('hand');
+
+async function registerDevice() {
+  const fingerprint = generateDeviceFingerprint();
+  const osInfo = browserInfo.os;
+  
+  try {
+    statusEl.innerText = 'Registering device...';
+    const response = await fetch(`${API_BASE}/register-device`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        deviceFingerprint: fingerprint, 
+        browserInfo,
+        osInfo 
+      })
+    });
+    const data = await response.json();
+    currentDeviceId = data.deviceId;
+    statusEl.innerText = `Device registered: ${currentDeviceId}`;
+  } catch (err) {
+    console.error('Device registration failed:', err);
+    statusEl.innerText = 'Device registration failed. Using offline mode.';
+    currentDeviceId = 'D000_OFFLINE';
+  }
+}
+
+async function getNextParticipantId() {
+  try {
+    statusEl.innerText = 'Getting participant ID...';
+    const response = await fetch(`${API_BASE}/get-next-id`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: currentDeviceId })
+    });
+    const data = await response.json();
+    currentParticipantId = data.participantId;
+    pidEl.value = currentParticipantId;
+    pidEl.readOnly = true;
+    statusEl.innerText = `Assigned ID: ${currentParticipantId}. Fill other details and start.`;
+    return currentParticipantId;
+  } catch (err) {
+    console.error('ID generation failed:', err);
+    currentParticipantId = 'U000_OFFLINE';
+    pidEl.value = currentParticipantId;
+    statusEl.innerText = 'Working in offline mode';
+    return null;
+  }
+}
+
+async function uploadToGoogleDrive(zipBlob, metadata) {
+  try {
+    statusEl.innerText = 'Uploading to Google Drive...';
+    const reader = new FileReader();
+    const base64Data = await new Promise((resolve) => {
+      reader.onloadend = () => resolve(reader.result.split(',')[1]);
+      reader.readAsDataURL(zipBlob);
+    });
+    
+    const response = await fetch(`${API_BASE}/upload-to-drive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: currentDeviceId,
+        participantId: currentParticipantId,
+        session: sessionEl.value,
+        gender: genderEl.value,
+        handedness: handEl.value,
+        zipData: base64Data,
+        metadata
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      statusEl.innerText = `Uploaded to Google Drive! Updating CSV...`;
+      
+      await fetch(`${API_BASE}/update-csv`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: currentDeviceId,
+          participantId: currentParticipantId,
+          session: sessionEl.value,
+          gender: genderEl.value,
+          handedness: handEl.value,
+          totalKeys: keyEvents.length,
+          browserInfo,
+          osInfo: browserInfo.os
+        })
+      });
+      
+      statusEl.innerText = `✓ Upload complete! CSV updated.`;
+    }
+  } catch (err) {
+    console.error('Upload failed:', err);
+    statusEl.innerText = 'Upload to Drive failed. File saved locally only.';
+  }
+}
+
+// Keep all your original functions (writeString, encodeWAVFromAudioBuffer, etc.)
+function safePrefix(s) {
+  return String(s || '').replace(/[^a-zA-Z0-9_-]/g, '') || 'NA';
+}
+
+function metaPrefix() {
+  const pid = safePrefix(pidEl.value);
+  const sess = safePrefix(sessionEl.value);
+  const gen = safePrefix(genderEl.value);
+  const hand = safePrefix(handEl.value);
+  return `${pid}_S${sess}_${gen}_${hand}`;
+}
+
+async function initMic() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    statusEl.innerText = 'Microphone access granted.';
+  } catch (err) {
+    statusEl.innerText = 'Microphone access denied: ' + (err && err.name ? err.name : err);
+    console.error(err);
+  }
+}
+
+function allMetaProvided() {
+  return consentChk.checked &&
+         pidEl.value.trim() &&
+         sessionEl.value.trim() &&
+         genderEl.value &&
+         handEl.value;
+}
+
+startBtn.addEventListener('click', async () => {
+  if (!allMetaProvided()) {
+    alert('Please tick consent and fill Session, Gender, Handedness.');
+    return;
+  }
+  if (!stream) await initMic();
+  if (!stream) return;
+
+  sessionMetadata = {
+    participant: {
+      id: pidEl.value.trim(),
+      session: sessionEl.value.trim(),
+      gender: genderEl.value || '',
+      handedness: handEl.value || ''
+    },
+    device: {
+      deviceId: currentDeviceId,
+      browser: browserInfo.name,
+      browserVersion: browserInfo.version,
+      os: browserInfo.os.name,
+      osVersion: browserInfo.os.version
+    },
+    start_time_utc: (new Date()).toISOString(),
+    pre_ms: PRE_MS,
+    post_ms: POST_MS,
+    sample_rate: null,
+    num_channels: null,
+    keys: [],
+    environment: { note: '', noise_level: '' },
+    generated_at: null,
+    duration_s: null,
+    exported_files: []
+  };
+
+  recordedChunks.length = 0;
+  keyEvents.length = 0;
+
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data && e.data.size) recordedChunks.push(e.data);
+  };
+  mediaRecorder.onstop = async () => {
+    statusEl.innerText = 'Recording stopped; processing...';
+    await processRecordingAndCreateZip();
+  };
+
+  recordingStartPerf = performance.now();
+  mediaRecorder.start();
+  recordingEnabled = true;
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  inputArea.disabled = false;
+  statusEl.innerText = 'Recording started. Start typing.';
+  inputArea.focus();
+});
+
+stopBtn.addEventListener('click', () => {
+  if (!mediaRecorder) return;
+  recordingEnabled = false;
+  try { mediaRecorder.stop(); } catch (e) {}
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  statusEl.innerText = 'Stopping...';
+});
+
+inputArea.addEventListener('keydown', (event) => {
+  if (!recordingEnabled) return;
+  if (['Shift','Control','Alt','Meta'].includes(event.key)) return;
+  const now = performance.now();
+  const t_ms = now - recordingStartPerf;
+  const keyLabel = event.key === ' ' ? 'space' : event.key;
+  keyEvents.push({ key: keyLabel, t_ms });
+  const pressed = keyEvents.map(k=>k.key).slice(-200);
+  keyListEl.textContent = pressed.join(', ');
+  statusEl.innerText = `Captured ${keyEvents.length}: "${keyLabel}"`;
+});
+
+function writeString(view, offset, string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+}
+
+function encodeWAVFromAudioBuffer(audioBuffer) {
+  const numChannels = audioBuffer.numberOfChannels;
+  const sampleRate = audioBuffer.sampleRate;
+  const length = audioBuffer.length;
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + length * blockAlign);
+  const view = new DataView(buffer);
+  
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + length * blockAlign, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, length * blockAlign, true);
+
+  let offset = 44;
+  const channelData = [];
+  for (let ch = 0; ch < numChannels; ch++) channelData.push(audioBuffer.getChannelData(ch));
+
+  for (let i = 0; i < length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      let sample = channelData[ch][i];
+      sample = Math.max(-1, Math.min(1, sample));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+
+  return new Blob([view], { type: 'audio/wav' });
+}
+
+async function processRecordingAndCreateZip() {
+  try {
+    if (recordedChunks.length === 0) {
+      statusEl.innerText = 'No audio recorded.';
+      return;
+    }
+    
+    const wholeBlob = new Blob(recordedChunks, { type: recordedChunks[0].type || 'audio/webm' });
+    const wholeExt = (recordedChunks[0] && recordedChunks[0].type && recordedChunks[0].type.includes('webm')) ? 'webm' : 'ogg';
+    const arrayBuffer = await wholeBlob.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+    
+    sessionMetadata.sample_rate = decoded.sampleRate;
+    sessionMetadata.duration_s = decoded.duration;
+    sessionMetadata.num_channels = decoded.numberOfChannels;
+    sessionMetadata.keys = keyEvents.map(k => ({ key: k.key, t_ms: k.t_ms }));
+    sessionMetadata.generated_at = (new Date()).toISOString();
+    sessionMetadata.total_events = keyEvents.length;
+
+    const zip = new JSZip();
+    zip.file(`${metaPrefix()}_continuous.${wholeExt}`, wholeBlob);
+
+    const filesMeta = [];
+    for (let i = 0; i < keyEvents.length; i++) {
+      const ev = keyEvents[i];
+      const start_s = Math.max(0, (ev.t_ms - PRE_MS) / 1000);
+      const end_s = Math.min(decoded.duration, (ev.t_ms + POST_MS) / 1000);
+      const startSample = Math.floor(start_s * decoded.sampleRate);
+      const endSample = Math.ceil(end_s * decoded.sampleRate);
+      const sliceLength = endSample - startSample;
+      if (sliceLength <= 0) continue;
+
+      const numChannels = decoded.numberOfChannels;
+      const sliceBuffer = audioCtx.createBuffer(numChannels, sliceLength, decoded.sampleRate);
+      for (let ch = 0; ch < numChannels; ch++) {
+        const channelData = decoded.getChannelData(ch).subarray(startSample, endSample);
+        sliceBuffer.copyToChannel(channelData, ch, 0);
+      }
+
+      const wavBlob = encodeWAVFromAudioBuffer(sliceBuffer);
+      if (wavBlob.size < MIN_SLICE_BYTES) continue;
+
+      const keySafe = String(ev.key).replace(/[^a-zA-Z0-9_-]/g, '') || 'key';
+      const filename = `${metaPrefix()}_key${String(i+1).padStart(4,'0')}_${keySafe}_${Math.round(ev.t_ms)}ms.wav`;
+
+      zip.file(filename, wavBlob);
+      filesMeta.push({ filename, key: ev.key, t_ms: ev.t_ms, size_bytes: wavBlob.size });
+      statusEl.innerText = `Processed ${filesMeta.length}/${keyEvents.length} slices...`;
+      await new Promise(r => setTimeout(r, 10));
+    }
+
+    sessionMetadata.exported_files = filesMeta;
+    zip.file(`${metaPrefix()}_metadata.json`, JSON.stringify(sessionMetadata, null, 2));
+
+    statusEl.innerText = 'Creating ZIP...';
+    const zipBlob = await zip.generateAsync({ 
+      type: 'blob', 
+      compression: 'DEFLATE', 
+      compressionOptions: { level: 6 } 
+    }, (meta) => {
+      statusEl.innerText = `Zipping: ${Math.round(meta.percent)}%`;
+    });
+
+    // Upload to Google Drive
+    await uploadToGoogleDrive(zipBlob, sessionMetadata);
+
+    // Local download
+    const zipFilename = `${metaPrefix()}_session_${sessionEl.value || '1'}.zip`;
+    triggerDownload(zipBlob, zipFilename);
+
+    statusEl.innerText = `✓ Complete! Exported ${filesMeta.length} files. Check Google Drive.`;
+  } catch (err) {
+    console.error('Processing error:', err);
+    statusEl.innerText = 'Error: ' + err.message;
+  }
+}
+
+function triggerDownload(blob, filename) {
+  const a = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+window.downloadRecordings = () => { alert('Use Stop Recording to export session ZIP.'); };
+window.removeLastRecording = () => { 
+  if (keyEvents.length === 0) { alert('No events to remove'); return; }
+  keyEvents.pop();
+  const pressed = keyEvents.map(k => k.key);
+  keyListEl.textContent = pressed.join(', ');
+  statusEl.innerText = 'Last key removed.';
+};
+window.refreshPage = () => {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    try { mediaRecorder.stop(); } catch(e) {}
+  }
+  recordedChunks.length = 0;
+  keyEvents.length = 0;
+  sessionMetadata = {};
+  keyListEl.textContent = '';
+  statusEl.innerText = 'Reset complete.';
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  recordingEnabled = false;
+};
+
+// Initialize
+window.addEventListener('DOMContentLoaded', async () => {
+  await registerDevice();
+  await getNextParticipantId();
+});
+  </script>
+</body>
+</html>

@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Keystroke Sound Recorder (WAV)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f7fa;
+      display: flex;
+      justify-content: center;
+      align-items: start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      color: #222;
+    }
+    .container {
+      background: #ffffff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 900px;
+    }
+    h1 {
+      font-size: 1.8em;
+      color: #333;
+      margin: 0 0 6px 0;
+    }
+    h2 {
+      margin: 24px 0 8px;
+      font-size: 1.2em;
+      color: #333;
+    }
+    p {
+      font-size: 0.98em;
+      color: #555;
+      margin: 0 0 14px 0;
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+    label {
+      font-size: 0.92em;
+      color: #333;
+      display: block;
+      margin-bottom: 6px;
+    }
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 1em;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+      transition: border-color 0.2s;
+      background: #fff;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #4a90e2;
+    }
+    textarea {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.05em;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      resize: vertical;
+      min-height: 160px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+      transition: border-color 0.2s;
+      background: #fff;
+    }
+    .btn {
+      background-color: #4a90e2;
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      font-size: 0.98em;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .btn:hover { background-color: #357ab8; }
+    .btn.secondary {
+      background-color: #6b7280;
+    }
+    .btn.secondary:hover { background-color: #4b5563; }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .muted {
+      color: #666;
+      font-size: 0.9em;
+    }
+    .status {
+      margin-top: 12px;
+      font-size: 0.95em;
+      color: #444;
+    }
+    .pressed-keys {
+      margin-top: 10px;
+      font-size: 0.95em;
+      color: #222;
+      word-wrap: break-word;
+    }
+    .panel {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.95em;
+      color: #1f2937;
+    }
+    .consent {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0 4px;
+    }
+    .note {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #7c2d12;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.95em;
+    }
+    .sep { height: 1px; background: #e5e7eb; margin: 18px 0; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Keystroke Sound Recorder</h1>
+    <p class="muted">
+      This page records short audio snippets around each key press while you type a standardized paragraph.No audio is uploaded automatically. You can download the WAV files locally when finished.
+    </p>
+
+    <div class="note">
+      Grant microphone access when prompted. If you deny access, recording cannot start. Keep your environment quiet to reduce background noise.
+    </div>
+
+    <h2>Participant and Session Details</h2>
+    <div class="grid">
+      <div>
+        <label for="pid">Participant ID</label>
+        <input id="pid" type="text" placeholder="e.g., U001" />
+      </div>
+      <div>
+        <label for="session">Session Number</label>
+        <input id="session" type="number" min="1" value="1" />
+      </div>
+      <div>
+        <label for="gender">Gender</label>
+        <select id="gender">
+          <option value="">Select</option>
+          <option>Female</option>
+          <option>Male</option>
+          <option>Other</option>
+          <option>Prefer not to say</option>
+        </select>
+      </div>
+      <div>
+        <label for="hand">Handedness</label>
+        <select id="hand">
+          <option value="">Select</option>
+          <option>Left</option>
+          <option>Right</option>
+          <option>Ambidextrous</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="consent">
+      <input type="checkbox" id="consentChk" />
+      <label for="consentChk">I have read the instructions and consent to participate in this local recording.</label>
+    </div>
+
+    <div class="sep"></div>
+
+    <h2>Paragraph to Type</h2>
+    <p class="muted">Type the paragraph below exactly as shown. You may correct mistakes naturally.</p>
+
+    <pre id="masterParagraph">
+The quick brown fox jumps over the lazy dog while amazing zebras quietly vex jumpy kids, proving every letter is present. Pack my box with five dozen liquor jugs to verify the alphabet twice.
+Digits appear forward and backward: 1234567890 then 0987654321, followed by sequences like 2468, 13579, and 314159.
+Now we add punctuation: . , ; : ? ! ' " - _ ( ) [ ] { } / \
+Symbols and operators: @ # $ % ^ & * + = &lt; &gt; | ~
+To include uppercase properly, acronyms like NASA, USA, UN, AI, ML, and HTML are written in full caps.
+Typing speed and accuracy will be measured across every key, ensuring consistency of captured events.
+Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes features [alpha], {bravo}, and (charlie), all typed carefully for complete coverage of the QWERTY keyboard.
+    </pre>
+
+    <div class="button-row">
+      <button class="btn secondary" id="insertParagraphBtn" hidden>Insert paragraph into box</button>
+      <button class="btn secondary" id="clearBoxBtn">Clear box</button>
+    </div>
+
+    <h2>Special Key Block</h2>
+    <p class="muted">After finishing the paragraph, press each key exactly once in this order.</p>
+    <pre>
+1) Tab
+2) Backspace
+3) Delete
+4) Arrow Up
+5) Arrow Down
+6) Arrow Left
+7) Arrow Right
+8) Esc
+9) F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12
+10) Caps Lock (press once to enable, once to disable)
+11) Enter (to confirm completion)
+    </pre>
+
+    <h2>Typing Box</h2>
+    <textarea id="inputArea" rows="8" placeholder="Click Insert to copy the paragraph here, then start typing." disabled></textarea>
+
+    <div class="button-row">
+      <button class="btn" id="startBtn">Start Recording</button>
+      <button class="btn" id="stopBtn" disabled>Stop Recording</button>
+      <button class="btn" onclick="downloadRecordings()">Download Recordings</button>
+      <button class="btn secondary" onclick="removeLastRecording()">Remove Last</button>
+      <button class="btn secondary" onclick="refreshPage()">Reset</button>
+    </div>
+
+    <div class="status" id="status"></div>
+    <div class="pressed-keys" id="pressedKeys"><strong>Keys Pressed:</strong> <span id="keyList"></span></div>
+
+      <footer style="
+    margin-top: auto;
+    padding: 12px 24px;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    font-size: 0.9em;
+    color: #555;
+    width: 100%;
+">
+    Developed by <strong>Vikrant Vikram</strong> | For Research Purpose
+  </footer>
+  
+  </div>
+
+
+
+
+  <!-- Recorder.js -->
+
+
+<script>
+
+
+let stream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingEnabled = false;
+let recordingStartPerf = 0;
+const keyEvents = [];               // { keyLabel, t_ms }
+let sessionMetadata = {};           // filled before start
+const MIN_SLICE_BYTES = 1200;
+const PRE_MS = 60;
+const POST_MS = 200;
+
+const statusEl = document.getElementById('status');
+const keyListEl = document.getElementById('keyList');
+const inputArea = document.getElementById('inputArea');
+
+const startBtn = document.getElementById('startBtn');
+const stopBtn  = document.getElementById('stopBtn');
+
+const consentChk = document.getElementById('consentChk');
+const pidEl = document.getElementById('pid');
+const sessionEl = document.getElementById('session');
+const genderEl = document.getElementById('gender');
+const handEl = document.getElementById('hand');
+
+function safePrefix(s) {
+  return String(s || '').replace(/[^a-zA-Z0-9_-]/g, '') || 'NA';
+}
+function metaPrefix() {
+  const pid = safePrefix(pidEl.value);
+  const sess = safePrefix(sessionEl.value);
+  const gen = safePrefix(genderEl.value);
+  const hand = safePrefix(handEl.value);
+  return `${pid}_S${sess}_${gen}_${hand}`;
+}
+
+async function initMic() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    statusEl.innerText = 'Microphone access granted.';
+  } catch (err) {
+    statusEl.innerText = 'Microphone access denied: ' + (err && err.name ? err.name : err);
+    console.error(err);
+  }
+}
+
+function allMetaProvided() {
+  return consentChk.checked &&
+         pidEl.value.trim() &&
+         sessionEl.value.trim() &&
+         genderEl.value &&
+         handEl.value;
+}
+
+startBtn.addEventListener('click', async () => {
+  if (!allMetaProvided()) {
+    alert('Please tick consent and fill Participant ID, Session, Gender, Handedness.');
+    return;
+  }
+  if (!stream) await initMic();
+  if (!stream) return;
+
+  sessionMetadata = {
+    participant: {
+      id: pidEl.value.trim(),
+      session: sessionEl.value.trim(),
+      gender: genderEl.value || '',
+      handedness: handEl.value || ''
+    },
+    start_time_utc: (new Date()).toISOString(),
+    pre_ms: PRE_MS,
+    post_ms: POST_MS,
+    sample_rate: null,
+    num_channels: null,
+    keys: [],
+    environment: { note: '', noise_level: '' },
+    generated_at: null,
+    duration_s: null,
+    exported_files: []
+  };
+
+  recordedChunks.length = 0;
+  keyEvents.length = 0;
+
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data && e.data.size) recordedChunks.push(e.data);
+  };
+  mediaRecorder.onstop = async () => {
+    statusEl.innerText = 'Recording stopped; processing and creating ZIP...';
+    await processRecordingAndCreateZip();
+  };
+
+  recordingStartPerf = performance.now();
+  mediaRecorder.start();
+  recordingEnabled = true;
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  inputArea.disabled = false;
+  statusEl.innerText = 'Continuous recording started. Start typing.';
+  inputArea.focus();
+});
+
+stopBtn.addEventListener('click', () => {
+  if (!mediaRecorder) return;
+  recordingEnabled = false;
+  try { mediaRecorder.stop(); } catch (e) { /* ignore */ }
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  statusEl.innerText = 'Stopping recorder...';
+});
+
+inputArea.addEventListener('keydown', (event) => {
+  if (!recordingEnabled) return;
+  if (['Shift','Control','Alt','Meta'].includes(event.key)) return;
+  const now = performance.now();
+  const t_ms = now - recordingStartPerf;
+  const keyLabel = event.key === ' ' ? 'space' : event.key;
+  keyEvents.push({ key: keyLabel, t_ms });
+  const pressed = keyEvents.map(k=>k.key).slice(-200);
+  keyListEl.textContent = pressed.join(', ');
+  statusEl.innerText = `Captured event ${keyEvents.length} : "${keyLabel}"`;
+});
+
+function writeString(view, offset, string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+}
+
+function encodeWAVFromAudioBuffer(audioBuffer) {
+  const numChannels = audioBuffer.numberOfChannels;
+  const sampleRate = audioBuffer.sampleRate;
+  const length = audioBuffer.length;
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + length * blockAlign);
+  const view = new DataView(buffer);
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + length * blockAlign, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, length * blockAlign, true);
+
+  let offset = 44;
+  const channelData = [];
+  for (let ch = 0; ch < numChannels; ch++) channelData.push(audioBuffer.getChannelData(ch));
+
+  for (let i = 0; i < length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      let sample = channelData[ch][i];
+      sample = Math.max(-1, Math.min(1, sample));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+
+  return new Blob([view], { type: 'audio/wav' });
+}
+
+async function processRecordingAndCreateZip() {
+  try {
+    if (recordedChunks.length === 0) {
+      statusEl.innerText = 'No audio recorded.';
+      return;
+    }
+    const wholeBlob = new Blob(recordedChunks, { type: recordedChunks[0].type || 'audio/webm' });
+    const wholeExt = (recordedChunks[0] && recordedChunks[0].type && recordedChunks[0].type.includes('webm')) ? 'webm' : 'ogg';
+    const arrayBuffer = await wholeBlob.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+    sessionMetadata.sample_rate = decoded.sampleRate;
+    sessionMetadata.duration_s = decoded.duration;
+    sessionMetadata.num_channels = decoded.numberOfChannels;
+    sessionMetadata.keys = keyEvents.map(k => ({ key: k.key, t_ms: k.t_ms }));
+    sessionMetadata.generated_at = (new Date()).toISOString();
+    sessionMetadata.total_events = keyEvents.length;
+
+    const zip = new JSZip();
+
+    zip.file(`${metaPrefix()}_continuous.${wholeExt}`, wholeBlob);
+
+    const filesMeta = [];
+    for (let i = 0; i < keyEvents.length; i++) {
+      const ev = keyEvents[i];
+      const start_s = Math.max(0, (ev.t_ms - PRE_MS) / 1000);
+      const end_s = Math.min(decoded.duration, (ev.t_ms + POST_MS) / 1000);
+      const startSample = Math.floor(start_s * decoded.sampleRate);
+      const endSample = Math.ceil(end_s * decoded.sampleRate);
+      const sliceLength = endSample - startSample;
+      if (sliceLength <= 0) continue;
+
+      const numChannels = decoded.numberOfChannels;
+      const sliceBuffer = audioCtx.createBuffer(numChannels, sliceLength, decoded.sampleRate);
+      for (let ch = 0; ch < numChannels; ch++) {
+        const channelData = decoded.getChannelData(ch).subarray(startSample, endSample);
+        sliceBuffer.copyToChannel(channelData, ch, 0);
+      }
+
+      const wavBlob = encodeWAVFromAudioBuffer(sliceBuffer);
+      if (wavBlob.size < MIN_SLICE_BYTES) continue;
+
+      const keySafe = String(ev.key).replace(/[^a-zA-Z0-9_-]/g, '') || 'key';
+      const filename = `${metaPrefix()}_key${String(i+1).padStart(4,'0')}_${keySafe}_${Math.round(ev.t_ms)}ms.wav`;
+
+      zip.file(filename, wavBlob);
+      filesMeta.push({ filename, key: ev.key, t_ms: ev.t_ms, size_bytes: wavBlob.size });
+      statusEl.innerText = `Processed ${filesMeta.length}/${keyEvents.length} slices...`;
+      await new Promise(r => setTimeout(r, 10));
+    }
+
+    sessionMetadata.exported_files = filesMeta;
+    zip.file(`${metaPrefix()}_metadata.json`, JSON.stringify(sessionMetadata, null, 2));
+
+    statusEl.innerText = 'Compressing into ZIP (may take a moment)...';
+    const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } }, (meta) => {
+      statusEl.innerText = `Zipping: ${Math.round(meta.percent)}%`;
+    });
+
+    const zipFilename = `${metaPrefix()}_session_${sessionEl.value || '1'}.zip`;
+    triggerDownload(zipBlob, zipFilename);
+
+    statusEl.innerText = `Exported ZIP: ${zipFilename} (slices: ${filesMeta.length})`;
+  } catch (err) {
+    console.error('Processing error:', err);
+    statusEl.innerText = 'Error processing recording: see console.';
+  }
+}
+
+function triggerDownload(blob, filename) {
+  const a = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+window.downloadRecordings = () => { alert('Use Stop Recording to export session ZIP.'); };
+window.removeLastRecording = () => { 
+  if (keyEvents.length === 0) { alert('No events to remove'); return; }
+  keyEvents.pop();
+  const pressed = keyEvents.map(k => k.key);
+  keyListEl.textContent = pressed.join(', ');
+  statusEl.innerText = 'Last key event removed (will not be exported).';
+};
+window.refreshPage = () => {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    try { mediaRecorder.stop(); } catch(e) {}
+  }
+  recordedChunks.length = 0;
+  keyEvents.length = 0;
+  sessionMetadata = {};
+  keyListEl.textContent = '';
+  statusEl.innerText = 'Reset complete. Tick consent and press Start to record.';
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  recordingEnabled = false;
+};
+</script>
+
+
+</body>
+</html>
