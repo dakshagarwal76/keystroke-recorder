@@ -1,61 +1,54 @@
-const { getDriveClient, ensureFolder, uploadFile } = require('../lib/drive-client');
+const { google } = require('googleapis');
+const fs = require('fs');
+const path = require('path');
 
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  
+export default async function handler(req, res) {
   try {
-    console.log('=== UPLOAD TO DRIVE START ===');
-    const { deviceId, participantId, session, gender, handedness, zipData, zipFileName } = req.body;
-    
-    console.log('Upload params:', {
-      deviceId,
-      participantId,
-      session,
-      gender,
-      handedness,
-      zipFileName,
-      zipDataLength: zipData ? zipData.length : 0
-    });
-    
-    if (!zipData) {
-      throw new Error('No ZIP data provided');
+    // Read refresh_token from /tmp -- replace with Edge Config or env for persistence
+    const refresh_token = fs.readFileSync('/tmp/refresh_token.txt', 'utf8').trim();
+
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.CLIENT_ID,
+      process.env.CLIENT_SECRET,
+      process.env.OAUTH_REDIRECT_URI
+    );
+    oauth2Client.setCredentials({ refresh_token });
+
+    // Init Drive client
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+    // Data from frontend
+    const { fileName, mimeType, zipData, folderId } = req.body;
+
+    if (!fileName || !zipData || !mimeType) {
+      res.status(400).json({ error: 'Missing fileName, mimeType, or zipData' });
+      return;
     }
-    
-    const drive = getDriveClient();
-    const rootFolderId = process.env.DRIVE_FOLDER_ID;
-    
-    console.log('Creating folder structure...');
-    const deviceFolderId = await ensureFolder(drive, rootFolderId, deviceId);
-    const participantFolderId = await ensureFolder(drive, deviceFolderId, participantId);
-    
-    const zipBuffer = Buffer.from(zipData, 'base64');
-    console.log('ZIP buffer size:', zipBuffer.length);
-    
-    const fileName = zipFileName || `${participantId}_S${session}_${gender}_${handedness}.zip`;
-    console.log('Final filename:', fileName);
-    
-    const uploadedFile = await uploadFile(drive, participantFolderId, fileName, zipBuffer, 'application/zip');
-    
-    console.log('=== UPLOAD TO DRIVE SUCCESS ===');
-    console.log('File ID:', uploadedFile.id);
-    
-    res.json({ 
-      success: true, 
-      fileId: uploadedFile.id,
-      webViewLink: uploadedFile.webViewLink,
-      fileName
+
+    // Decode base64 data
+    const fileBuffer = Buffer.from(zipData, 'base64');
+
+    // Upload file to Drive
+    const uploadRes = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: folderId ? [folderId] : undefined, // If uploading to a specific folder
+      },
+      media: {
+        mimeType,
+        body: fileBuffer
+      },
+      fields: 'id, name, webViewLink'
+    });
+
+    res.json({
+      success: true,
+      id: uploadRes.data.id,
+      name: uploadRes.data.name,
+      webViewLink: uploadRes.data.webViewLink
     });
   } catch (error) {
-    console.error('=== UPLOAD TO DRIVE ERROR ===');
-    console.error('Error details:', error);
-    res.status(500).json({ 
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    console.error('Drive upload error:', error.message);
+    res.status(500).json({ error: error.message });
   }
-};
+}

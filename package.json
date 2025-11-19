@@ -2,9 +2,9 @@
   "name": "keystroke-recorder-backend",
   "version": "1.0.0",
   "dependencies": {
-    "googleapis": "^128.0.0",
-    "uuid": "^9.0.0",
+    "csv-parse": "^5.5.0",
     "csv-stringify": "^6.4.0",
-    "csv-parse": "^5.5.0"
+    "googleapis": "^128.0.0",
+    "uuid": "^9.0.0"
   }
 }
