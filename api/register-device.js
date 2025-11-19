@@ -20,7 +20,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'DRIVE_FOLDER_ID not configured' });
     }
 
-    // Search for existing folder for device fingerprint
     const resList = await drive.files.list({
       q: `'${folderId}' in parents and name='${deviceFingerprint}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
       fields: 'files(id, name)',
