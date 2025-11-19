@@ -1,5 +1,5 @@
 import { Readable } from 'stream';
-import { getDriveClient } from '../lib/googleDriveClient';
+import { getDriveClient, ensureFolder } from '../lib/googleDriveClient';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -9,8 +9,15 @@ export default async function handler(req, res) {
 
   try {
     const drive = getDriveClient();
-    const { zipFileName, zipData } = req.body;
+    // Expect: participantId (e.g., U001), session (number), zipFileName, zipData
+    const { participantId, session, zipFileName, zipData } = req.body;
 
+    if (!participantId || typeof participantId !== 'string' || participantId.trim() === '') {
+      return res.status(400).json({ error: 'Invalid or missing participantId' });
+    }
+    if (!session || isNaN(Number(session))) {
+      return res.status(400).json({ error: 'Invalid or missing session' });
+    }
     if (!zipFileName || typeof zipFileName !== 'string' || zipFileName.trim() === '') {
       return res.status(400).json({ error: 'Invalid or missing zipFileName' });
     }
@@ -18,29 +25,39 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid or missing zipData' });
     }
 
-    // Decode base64 zip data to buffer
-    const buffer = Buffer.from(zipData, 'base64');
+    // Your root Google Drive folder for participants
+    const participantsFolderId = "1V3JP_oAztX6coqxCvGFqAIJ63BJTzrPm";
 
-    // Convert buffer into a readable stream for Google Drive API
+    // Ensure participant folder exists under participants/
+    const participantFolderId = await ensureFolder(drive, participantsFolderId, participantId);
+
+    // Ensure session folder exists under participant/
+    const sessionFolderName = `session_${String(session).padStart(2, '0')}`;
+    const sessionFolderId = await ensureFolder(drive, participantFolderId, sessionFolderName);
+
+    // Convert base64 ZIP data to stream
+    const buffer = Buffer.from(zipData, 'base64');
     const stream = Readable.from(buffer);
 
-    // Upload file to Google Drive root folder or specify folder via parents
+    // Upload the ZIP file to session folder
     const uploadResult = await drive.files.create({
       requestBody: {
         name: zipFileName,
-        // Optionally add: parents: [process.env.DRIVE_FOLDER_ID]
+        parents: [sessionFolderId],
+        mimeType: 'application/zip',
       },
       media: {
         mimeType: 'application/zip',
         body: stream,
       },
-      fields: 'id, webViewLink',
+      fields: 'id, name, webViewLink',
     });
 
     return res.json({
       success: true,
       id: uploadResult.data.id,
-      link: uploadResult.data.webViewLink,
+      name: uploadResult.data.name,
+      link: uploadResult.data.webViewLink || null,
     });
   } catch (err) {
     console.error('Upload error:', err);
