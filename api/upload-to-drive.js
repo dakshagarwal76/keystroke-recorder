@@ -1,4 +1,5 @@
-const { getDriveClient } = require('../lib/googleDriveClient');
+import { Readable } from 'stream';
+import { getDriveClient } from '../lib/googleDriveClient';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,11 +9,8 @@ export default async function handler(req, res) {
 
   try {
     const drive = getDriveClient();
-
-    // Expecting file name and base64-encoded ZIP data in request body
     const { zipFileName, zipData } = req.body;
 
-    // Validate required inputs
     if (!zipFileName || typeof zipFileName !== 'string' || zipFileName.trim() === '') {
       return res.status(400).json({ error: 'Invalid or missing zipFileName' });
     }
@@ -20,25 +18,25 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid or missing zipData' });
     }
 
-    // Decode base64 ZIP data to buffer
+    // Decode base64 zip data to buffer
     const buffer = Buffer.from(zipData, 'base64');
 
-    // Upload ZIP file to Google Drive root folder of authorized user
-    // You can optionally specify parents to upload to specific folder
+    // Convert buffer into a readable stream for Google Drive API
+    const stream = Readable.from(buffer);
+
+    // Upload file to Google Drive root folder or specify folder via parents
     const uploadResult = await drive.files.create({
       requestBody: {
         name: zipFileName,
-        mimeType: 'application/zip',
-        // Add parents: [process.env.DRIVE_FOLDER_ID], if you want to upload to a folder
+        // Optionally add: parents: [process.env.DRIVE_FOLDER_ID]
       },
       media: {
         mimeType: 'application/zip',
-        body: buffer,
+        body: stream,
       },
       fields: 'id, webViewLink',
     });
 
-    // Respond with success details
     return res.json({
       success: true,
       id: uploadResult.data.id,
