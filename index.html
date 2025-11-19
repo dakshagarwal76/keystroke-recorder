@@ -337,12 +337,12 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       return Math.abs(hash).toString(36);
     }
 
-    const browserInfo = detectBrowser();
-    if (browserInfo.deviceType !== 'desktop') {
-      document.body.innerHTML = '<div style="text-align:center;margin-top:100px;"><h1>Access Restricted</h1><p>This application only works on PC/Laptop.</p></div>';
-      throw new Error('Device not supported');
-    }
-
+    // const browserInfo = detectBrowser();
+    // if (browserInfo.deviceType !== 'desktop') {
+    //   document.body.innerHTML = '<div style="text-align:center;margin-top:100px;"><h1>Access Restricted</h1><p>This application only works on PC/Laptop.</p></div>';
+    //   throw new Error('Device not supported');
+    // }
+      const browserInfo = detectBrowser();
     const API_BASE = '/api';
     let currentDeviceId = null;
     let currentParticipantId = null;
