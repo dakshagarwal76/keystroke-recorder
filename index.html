@@ -63,6 +63,11 @@
       transition: border-color 0.2s;
       background: #fff;
     }
+    input:disabled, select:disabled {
+      background: #f0f0f0;
+      color: #666;
+      cursor: not-allowed;
+    }
     input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: #4a90e2;
@@ -120,12 +125,6 @@
       color: #222;
       word-wrap: break-word;
     }
-    .panel {
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 14px;
-    }
     pre {
       white-space: pre-wrap;
       word-break: break-word;
@@ -151,6 +150,15 @@
       border-radius: 8px;
       font-size: 0.95em;
     }
+    .info-badge {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      margin-top: 8px;
+    }
     .sep { height: 1px; background: #e5e7eb; margin: 18px 0; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -159,22 +167,43 @@
   <div class="container">
     <h1>Keystroke Sound Recorder</h1>
     <p class="muted">
-      This page records short audio snippets around each key press while you type a standardized paragraph. No audio is uploaded automatically. You can download the WAV files locally when finished.
+      This page records short audio snippets around each key press while you type a standardized paragraph.
     </p>
 
     <div class="note">
-      Grant microphone access when prompted. If you deny access, recording cannot start. Keep your environment quiet to reduce background noise.
+      Grant microphone access when prompted. Keep your environment quiet to reduce background noise.
     </div>
 
-    <h2>Participant and Session Details</h2>
+    <h2>Device Information</h2>
+    <div class="grid">
+      <div>
+        <label for="deviceIdDisplay">Device ID</label>
+        <input id="deviceIdDisplay" type="text" readonly disabled />
+      </div>
+      <div>
+        <label for="osDisplay">Operating System</label>
+        <input id="osDisplay" type="text" readonly disabled />
+      </div>
+      <div>
+        <label for="browserDisplay">Browser</label>
+        <input id="browserDisplay" type="text" readonly disabled />
+      </div>
+      <div>
+        <label for="deviceTypeDisplay">Device Type</label>
+        <input id="deviceTypeDisplay" type="text" readonly disabled />
+      </div>
+    </div>
+
+    <h2>Participant Details</h2>
     <div class="grid">
       <div>
         <label for="pid">Participant ID</label>
-        <input id="pid" type="text" placeholder="Auto-generated" readonly />
+        <input id="pid" type="text" readonly disabled />
       </div>
       <div>
         <label for="session">Session Number</label>
-        <input id="session" type="number" min="1" value="1" />
+        <input id="session" type="number" min="1" value="1" readonly disabled />
+        <span class="info-badge" id="sessionInfo">Auto-detected</span>
       </div>
       <div>
         <label for="gender">Gender</label>
@@ -199,35 +228,21 @@
 
     <div class="consent">
       <input type="checkbox" id="consentChk" />
-      <label for="consentChk">I have read the instructions and consent to participate in this local recording.</label>
+      <label for="consentChk">I consent to participate in this research recording.</label>
     </div>
 
     <div class="sep"></div>
 
     <h2>Paragraph to Type</h2>
-    <p class="muted">Type the paragraph below exactly as shown. You may correct mistakes naturally.</p>
+    <p class="muted">Type the paragraph below exactly as shown.</p>
 
-    <pre id="masterParagraph">The quick brown fox jumps over the lazy dog while amazing zebras quietly vex jumpy kids, proving every letter is present. Pack my box with five dozen liquor jugs to verify the alphabet twice.
+    <pre>The quick brown fox jumps over the lazy dog while amazing zebras quietly vex jumpy kids, proving every letter is present. Pack my box with five dozen liquor jugs to verify the alphabet twice.
 Digits appear forward and backward: 1234567890 then 0987654321, followed by sequences like 2468, 13579, and 314159.
 Now we add punctuation: . , ; : ? ! ' " - _ ( ) [ ] { } / \
 Symbols and operators: @ # $ % ^ & * + = &lt; &gt; | ~
 To include uppercase properly, acronyms like NASA, USA, UN, AI, ML, and HTML are written in full caps.
 Typing speed and accuracy will be measured across every key, ensuring consistency of captured events.
 Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes features [alpha], {bravo}, and (charlie), all typed carefully for complete coverage of the QWERTY keyboard.</pre>
-
-    <h2>Special Key Block</h2>
-    <p class="muted">After finishing the paragraph, press each key exactly once in this order.</p>
-    <pre>1) Tab
-2) Backspace
-3) Delete
-4) Arrow Up
-5) Arrow Down
-6) Arrow Left
-7) Arrow Right
-8) Esc
-9) F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12
-10) Caps Lock (press once to enable, once to disable)
-11) Enter (to confirm completion)</pre>
 
     <h2>Typing Box</h2>
     <textarea id="inputArea" rows="8" placeholder="Start typing after clicking 'Start Recording'" disabled></textarea>
@@ -332,6 +347,9 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
 
     let currentDeviceId = null;
     let currentParticipantId = null;
+    let currentSessionNumber = 1;
+    let typingStartTime = null;
+    let totalCharactersTyped = 0;
 
     // Recorder variables
     let stream = null;
@@ -345,12 +363,12 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     const PRE_MS = 60;
     const POST_MS = 200;
 
-    // DOM elements - wait for DOM to be ready
-    let statusEl, keyListEl, inputArea, startBtn, stopBtn, consentChk, pidEl, sessionEl, genderEl, handEl;
+    // DOM elements
+    let statusEl, keyListEl, inputArea, startBtn, stopBtn, consentChk;
+    let pidEl, sessionEl, genderEl, handEl;
+    let deviceIdDisplay, osDisplay, browserDisplay, deviceTypeDisplay, sessionInfo;
 
-    // Initialize after DOM is loaded
     document.addEventListener('DOMContentLoaded', async () => {
-      // Get all DOM elements
       statusEl = document.getElementById('status');
       keyListEl = document.getElementById('keyList');
       inputArea = document.getElementById('inputArea');
@@ -361,19 +379,26 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       sessionEl = document.getElementById('session');
       genderEl = document.getElementById('gender');
       handEl = document.getElementById('hand');
+      deviceIdDisplay = document.getElementById('deviceIdDisplay');
+      osDisplay = document.getElementById('osDisplay');
+      browserDisplay = document.getElementById('browserDisplay');
+      deviceTypeDisplay = document.getElementById('deviceTypeDisplay');
+      sessionInfo = document.getElementById('sessionInfo');
 
-      // Check if all elements exist
-      if (!statusEl || !keyListEl || !inputArea || !startBtn || !stopBtn || !consentChk || !pidEl || !sessionEl || !genderEl || !handEl) {
+      if (!statusEl || !keyListEl || !inputArea || !startBtn || !stopBtn) {
         console.error('Missing required DOM elements');
         alert('Page error: Missing required elements. Please refresh.');
         return;
       }
 
-      // Register device and get participant ID
+      // Fill device info
+      osDisplay.value = `${browserInfo.os.name} ${browserInfo.os.version}`;
+      browserDisplay.value = `${browserInfo.name} ${browserInfo.version}`;
+      deviceTypeDisplay.value = browserInfo.deviceType.charAt(0).toUpperCase() + browserInfo.deviceType.slice(1);
+
       await registerDevice();
       await getNextParticipantId();
 
-      // Setup event listeners
       startBtn.addEventListener('click', handleStart);
       stopBtn.addEventListener('click', handleStop);
       inputArea.addEventListener('keydown', handleKeydown);
@@ -396,11 +421,13 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         });
         const data = await response.json();
         currentDeviceId = data.deviceId;
+        deviceIdDisplay.value = currentDeviceId;
         statusEl.innerText = `Device registered: ${currentDeviceId}`;
       } catch (err) {
         console.error('Device registration failed:', err);
         statusEl.innerText = 'Device registration failed. Using offline mode.';
         currentDeviceId = 'D000_OFFLINE';
+        deviceIdDisplay.value = currentDeviceId;
       }
     }
 
@@ -414,15 +441,17 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         });
         const data = await response.json();
         currentParticipantId = data.participantId;
+        currentSessionNumber = data.sessionNumber || 1;
+        
         pidEl.value = currentParticipantId;
-        statusEl.innerText = `Assigned ID: ${currentParticipantId}. Fill other details and start.`;
-        return currentParticipantId;
+        sessionEl.value = currentSessionNumber;
+        sessionInfo.innerText = `Session ${currentSessionNumber} for this participant`;
+        statusEl.innerText = `Ready! Participant: ${currentParticipantId}, Session: ${currentSessionNumber}`;
       } catch (err) {
         console.error('ID generation failed:', err);
         currentParticipantId = 'U000_OFFLINE';
         pidEl.value = currentParticipantId;
         statusEl.innerText = 'Working in offline mode';
-        return null;
       }
     }
 
@@ -431,11 +460,25 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     }
 
     function metaPrefix() {
-      const pid = safePrefix(pidEl.value);
-      const sess = safePrefix(sessionEl.value);
+      const pid = safePrefix(currentParticipantId);
+      const sess = safePrefix(currentSessionNumber);
       const gen = safePrefix(genderEl.value);
       const hand = safePrefix(handEl.value);
       return `${pid}_S${sess}_${gen}_${hand}`;
+    }
+
+    function calculateTypingSpeed() {
+      if (!typingStartTime || totalCharactersTyped === 0) return { wpm: 0, category: 'Beginner' };
+      
+      const durationMinutes = (Date.now() - typingStartTime) / 60000;
+      const words = totalCharactersTyped / 5; // Standard: 5 characters = 1 word
+      const wpm = Math.round(words / durationMinutes);
+      
+      let category = 'Beginner';
+      if (wpm >= 60) category = 'Expert';
+      else if (wpm >= 40) category = 'Intermediate';
+      
+      return { wpm, category };
     }
 
     async function initMic() {
@@ -449,25 +492,24 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     }
 
     function allMetaProvided() {
-      return consentChk.checked &&
-             pidEl.value.trim() &&
-             sessionEl.value.trim() &&
-             genderEl.value &&
-             handEl.value;
+      return consentChk.checked && genderEl.value && handEl.value;
     }
 
     async function handleStart() {
       if (!allMetaProvided()) {
-        alert('Please tick consent and fill Session, Gender, Handedness.');
+        alert('Please tick consent and select Gender and Handedness.');
         return;
       }
       if (!stream) await initMic();
       if (!stream) return;
 
+      typingStartTime = Date.now();
+      totalCharactersTyped = 0;
+
       sessionMetadata = {
         participant: {
-          id: pidEl.value.trim(),
-          session: sessionEl.value.trim(),
+          id: currentParticipantId,
+          session: currentSessionNumber,
           gender: genderEl.value || '',
           handedness: handEl.value || ''
         },
@@ -476,7 +518,8 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
           browser: browserInfo.name,
           browserVersion: browserInfo.version,
           os: browserInfo.os.name,
-          osVersion: browserInfo.os.version
+          osVersion: browserInfo.os.version,
+          deviceType: browserInfo.deviceType
         },
         start_time_utc: (new Date()).toISOString(),
         pre_ms: PRE_MS,
@@ -484,6 +527,8 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         sample_rate: null,
         num_channels: null,
         keys: [],
+        typing_speed: null,
+        typing_category: null,
         environment: { note: '', noise_level: '' },
         generated_at: null,
         duration_s: null,
@@ -508,6 +553,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       startBtn.disabled = true;
       stopBtn.disabled = false;
       inputArea.disabled = false;
+      inputArea.value = ''; // Clear textarea
       statusEl.innerText = 'Recording started. Start typing.';
       inputArea.focus();
     }
@@ -518,19 +564,23 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       try { mediaRecorder.stop(); } catch (e) {}
       startBtn.disabled = false;
       stopBtn.disabled = true;
+      inputArea.disabled = true;
       statusEl.innerText = 'Stopping...';
     }
 
     function handleKeydown(event) {
       if (!recordingEnabled) return;
       if (['Shift','Control','Alt','Meta'].includes(event.key)) return;
+      
+      totalCharactersTyped++;
+      
       const now = performance.now();
       const t_ms = now - recordingStartPerf;
       const keyLabel = event.key === ' ' ? 'space' : event.key;
       keyEvents.push({ key: keyLabel, t_ms });
-      const pressed = keyEvents.map(k=>k.key).slice(-200);
+      const pressed = keyEvents.map(k=>k.key).slice(-50);
       keyListEl.textContent = pressed.join(', ');
-      statusEl.innerText = `Captured ${keyEvents.length}: "${keyLabel}"`;
+      statusEl.innerText = `Captured ${keyEvents.length} keys`;
     }
 
     function writeString(view, offset, string) {
@@ -586,6 +636,8 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
           reader.onloadend = () => resolve(reader.result.split(',')[1]);
           reader.readAsDataURL(zipBlob);
         });
+
+        const typingSpeed = calculateTypingSpeed();
         
         const response = await fetch(`${API_BASE}/upload-to-drive`, {
           method: 'POST',
@@ -593,17 +645,18 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
           body: JSON.stringify({
             deviceId: currentDeviceId,
             participantId: currentParticipantId,
-            session: sessionEl.value,
+            session: currentSessionNumber,
             gender: genderEl.value,
             handedness: handEl.value,
             zipData: base64Data,
+            zipFileName: `${metaPrefix()}_session_${currentSessionNumber}.zip`,
             metadata
           })
         });
         
         const result = await response.json();
         if (result.success) {
-          statusEl.innerText = `Uploaded to Google Drive! Updating CSV...`;
+          statusEl.innerText = `Uploaded! Updating CSV...`;
           
           await fetch(`${API_BASE}/update-csv`, {
             method: 'POST',
@@ -611,20 +664,25 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
             body: JSON.stringify({
               deviceId: currentDeviceId,
               participantId: currentParticipantId,
-              session: sessionEl.value,
+              session: currentSessionNumber,
               gender: genderEl.value,
               handedness: handEl.value,
               totalKeys: keyEvents.length,
               browserInfo,
-              osInfo: browserInfo.os
+              osInfo: browserInfo.os,
+              typingSpeed: typingSpeed.wpm,
+              typingCategory: typingSpeed.category
             })
           });
           
-          statusEl.innerText = `✓ Upload complete! CSV updated.`;
+          statusEl.innerText = `✓ Complete! WPM: ${typingSpeed.wpm} (${typingSpeed.category})`;
+          
+          // Clear textarea after successful upload
+          inputArea.value = '';
         }
       } catch (err) {
         console.error('Upload failed:', err);
-        statusEl.innerText = 'Upload to Drive failed. File saved locally only.';
+        statusEl.innerText = 'Upload failed. File saved locally only.';
       }
     }
 
@@ -641,10 +699,14 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
         
+        const typingSpeed = calculateTypingSpeed();
+        
         sessionMetadata.sample_rate = decoded.sampleRate;
         sessionMetadata.duration_s = decoded.duration;
         sessionMetadata.num_channels = decoded.numberOfChannels;
         sessionMetadata.keys = keyEvents.map(k => ({ key: k.key, t_ms: k.t_ms }));
+        sessionMetadata.typing_speed = typingSpeed.wpm;
+        sessionMetadata.typing_category = typingSpeed.category;
         sessionMetadata.generated_at = (new Date()).toISOString();
         sessionMetadata.total_events = keyEvents.length;
 
@@ -676,8 +738,11 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
 
           zip.file(filename, wavBlob);
           filesMeta.push({ filename, key: ev.key, t_ms: ev.t_ms, size_bytes: wavBlob.size });
-          statusEl.innerText = `Processed ${filesMeta.length}/${keyEvents.length} slices...`;
-          await new Promise(r => setTimeout(r, 10));
+          
+          if (i % 10 === 0) {
+            statusEl.innerText = `Processing: ${i}/${keyEvents.length}`;
+            await new Promise(r => setTimeout(r, 1));
+          }
         }
 
         sessionMetadata.exported_files = filesMeta;
@@ -692,14 +757,10 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
           statusEl.innerText = `Zipping: ${Math.round(meta.percent)}%`;
         });
 
-        // Upload to Google Drive
         await uploadToGoogleDrive(zipBlob, sessionMetadata);
 
-        // Local download
-        const zipFilename = `${metaPrefix()}_session_${sessionEl.value || '1'}.zip`;
+        const zipFilename = `${metaPrefix()}_session_${currentSessionNumber}.zip`;
         triggerDownload(zipBlob, zipFilename);
-
-        statusEl.innerText = `✓ Complete! Exported ${filesMeta.length} files. Check Google Drive.`;
       } catch (err) {
         console.error('Processing error:', err);
         statusEl.innerText = 'Error: ' + err.message;
