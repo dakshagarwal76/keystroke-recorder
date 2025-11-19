@@ -1,4 +1,4 @@
-import { getDriveClient } from '../../lib/googleDriveClient';
+import { getDriveClient } from '../lib/googleDriveClient';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
