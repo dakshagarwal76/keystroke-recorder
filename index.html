@@ -263,7 +263,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
   </div>
 
   <script>
-    // Device Detection
+    // Device Detection (same as before)
     function detectBrowser() {
       const userAgent = navigator.userAgent;
       const browsers = [
@@ -339,19 +339,17 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
 
     const browserInfo = detectBrowser();
     if (browserInfo.deviceType !== 'desktop') {
-      document.body.innerHTML = '<div style="text-align:center;margin-top:100px;"><h1>Access Restricted</h1><p>This application only works on PC/Laptop. Mobile and tablet devices are not supported.</p></div>';
+      document.body.innerHTML = '<div style="text-align:center;margin-top:100px;"><h1>Access Restricted</h1><p>This application only works on PC/Laptop.</p></div>';
       throw new Error('Device not supported');
     }
 
     const API_BASE = '/api';
-
     let currentDeviceId = null;
     let currentParticipantId = null;
     let currentSessionNumber = 1;
     let typingStartTime = null;
     let totalCharactersTyped = 0;
 
-    // Recorder variables
     let stream = null;
     let mediaRecorder = null;
     let recordedChunks = [];
@@ -363,7 +361,6 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     const PRE_MS = 60;
     const POST_MS = 200;
 
-    // DOM elements
     let statusEl, keyListEl, inputArea, startBtn, stopBtn, consentChk;
     let pidEl, sessionEl, genderEl, handEl;
     let deviceIdDisplay, osDisplay, browserDisplay, deviceTypeDisplay, sessionInfo;
@@ -385,17 +382,11 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       deviceTypeDisplay = document.getElementById('deviceTypeDisplay');
       sessionInfo = document.getElementById('sessionInfo');
 
-      if (!statusEl || !keyListEl || !inputArea || !startBtn || !stopBtn) {
-        console.error('Missing required DOM elements');
-        alert('Page error: Missing required elements. Please refresh.');
-        return;
-      }
-
-      // Fill device info
       osDisplay.value = `${browserInfo.os.name} ${browserInfo.os.version}`;
       browserDisplay.value = `${browserInfo.name} ${browserInfo.version}`;
       deviceTypeDisplay.value = browserInfo.deviceType.charAt(0).toUpperCase() + browserInfo.deviceType.slice(1);
 
+      console.log('Initializing application...');
       await registerDevice();
       await getNextParticipantId();
 
@@ -406,72 +397,95 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
 
     async function registerDevice() {
       const fingerprint = generateDeviceFingerprint();
-      const osInfo = browserInfo.os;
       
       try {
         statusEl.innerText = 'Registering device...';
+        console.log('Calling register-device API with fingerprint:', fingerprint);
+        
         const response = await fetch(`${API_BASE}/register-device`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             deviceFingerprint: fingerprint, 
             browserInfo,
-            osInfo 
+            osInfo: browserInfo.os 
           })
         });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Register device failed:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
         const data = await response.json();
+        console.log('Register device response:', data);
+        
+        if (!data.deviceId) {
+          throw new Error('No deviceId in response');
+        }
+        
         currentDeviceId = data.deviceId;
         deviceIdDisplay.value = currentDeviceId;
         statusEl.innerText = `Device registered: ${currentDeviceId}`;
+        console.log('Device registered successfully:', currentDeviceId);
       } catch (err) {
-        console.error('Device registration failed:', err);
-        statusEl.innerText = 'Device registration failed. Using offline mode.';
-        currentDeviceId = 'D000_OFFLINE';
-        deviceIdDisplay.value = currentDeviceId;
+        console.error('Device registration error:', err);
+        statusEl.innerText = `Registration failed: ${err.message}. Check console (F12).`;
+        alert('Device registration failed. Please check:\n1. Environment variables in Vercel\n2. Service account permissions\n3. Console (F12) for errors');
       }
     }
 
     async function getNextParticipantId() {
+      if (!currentDeviceId) {
+        console.error('Cannot get participant ID: no device ID');
+        statusEl.innerText = 'Error: Device not registered';
+        return;
+      }
+      
       try {
         statusEl.innerText = 'Getting participant ID...';
+        console.log('Calling get-next-id API for device:', currentDeviceId);
+        
         const response = await fetch(`${API_BASE}/get-next-id`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ deviceId: currentDeviceId })
         });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Get ID failed:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
         const data = await response.json();
+        console.log('Get ID response:', data);
+        
+        if (!data.participantId) {
+          throw new Error('No participantId in response');
+        }
+        
         currentParticipantId = data.participantId;
         currentSessionNumber = data.sessionNumber || 1;
         
         pidEl.value = currentParticipantId;
         sessionEl.value = currentSessionNumber;
-        sessionInfo.innerText = `Session ${currentSessionNumber} for this participant`;
-        statusEl.innerText = `Ready! Participant: ${currentParticipantId}, Session: ${currentSessionNumber}`;
+        sessionInfo.innerText = `Session ${currentSessionNumber}`;
+        statusEl.innerText = `Ready! ${currentParticipantId}, Session ${currentSessionNumber}`;
+        console.log('Setup complete:', { currentParticipantId, currentSessionNumber });
       } catch (err) {
-        console.error('ID generation failed:', err);
-        currentParticipantId = 'U000_OFFLINE';
-        pidEl.value = currentParticipantId;
-        statusEl.innerText = 'Working in offline mode';
+        console.error('Get participant ID error:', err);
+        statusEl.innerText = `ID generation failed: ${err.message}. Check console.`;
+        alert('Participant ID generation failed. Check console (F12) for details.');
       }
-    }
-
-    function safePrefix(s) {
-      return String(s || '').replace(/[^a-zA-Z0-9_-]/g, '') || 'NA';
-    }
-
-    function metaPrefix() {
-      const pid = safePrefix(currentParticipantId);
-      const sess = safePrefix(currentSessionNumber);
-      const gen = safePrefix(genderEl.value);
-      const hand = safePrefix(handEl.value);
-      return `${pid}_S${sess}_${gen}_${hand}`;
     }
 
     function calculateTypingSpeed() {
       if (!typingStartTime || totalCharactersTyped === 0) return { wpm: 0, category: 'Beginner' };
       
       const durationMinutes = (Date.now() - typingStartTime) / 60000;
-      const words = totalCharactersTyped / 5; // Standard: 5 characters = 1 word
+      const words = totalCharactersTyped / 5;
       const wpm = Math.round(words / durationMinutes);
       
       let category = 'Beginner';
@@ -484,22 +498,28 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     async function initMic() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        statusEl.innerText = 'Microphone access granted.';
+        statusEl.innerText = 'Microphone granted.';
       } catch (err) {
-        statusEl.innerText = 'Microphone access denied: ' + (err && err.name ? err.name : err);
+        statusEl.innerText = 'Microphone denied: ' + err.name;
         console.error(err);
       }
     }
 
     function allMetaProvided() {
-      return consentChk.checked && genderEl.value && handEl.value;
+      return consentChk.checked && genderEl.value && handEl.value && currentParticipantId;
     }
 
     async function handleStart() {
+      if (!currentParticipantId) {
+        alert('Please wait for participant ID to load');
+        return;
+      }
+      
       if (!allMetaProvided()) {
         alert('Please tick consent and select Gender and Handedness.');
         return;
       }
+      
       if (!stream) await initMic();
       if (!stream) return;
 
@@ -510,8 +530,8 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         participant: {
           id: currentParticipantId,
           session: currentSessionNumber,
-          gender: genderEl.value || '',
-          handedness: handEl.value || ''
+          gender: genderEl.value,
+          handedness: handEl.value
         },
         device: {
           deviceId: currentDeviceId,
@@ -521,18 +541,9 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
           osVersion: browserInfo.os.version,
           deviceType: browserInfo.deviceType
         },
-        start_time_utc: (new Date()).toISOString(),
+        start_time_utc: new Date().toISOString(),
         pre_ms: PRE_MS,
-        post_ms: POST_MS,
-        sample_rate: null,
-        num_channels: null,
-        keys: [],
-        typing_speed: null,
-        typing_category: null,
-        environment: { note: '', noise_level: '' },
-        generated_at: null,
-        duration_s: null,
-        exported_files: []
+        post_ms: POST_MS
       };
 
       recordedChunks.length = 0;
@@ -543,7 +554,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         if (e.data && e.data.size) recordedChunks.push(e.data);
       };
       mediaRecorder.onstop = async () => {
-        statusEl.innerText = 'Recording stopped; processing...';
+        statusEl.innerText = 'Processing recording...';
         await processRecordingAndCreateZip();
       };
 
@@ -553,8 +564,8 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       startBtn.disabled = true;
       stopBtn.disabled = false;
       inputArea.disabled = false;
-      inputArea.value = ''; // Clear textarea
-      statusEl.innerText = 'Recording started. Start typing.';
+      inputArea.value = '';
+      statusEl.innerText = '🔴 Recording... Start typing!';
       inputArea.focus();
     }
 
@@ -565,7 +576,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       startBtn.disabled = false;
       stopBtn.disabled = true;
       inputArea.disabled = true;
-      statusEl.innerText = 'Stopping...';
+      statusEl.innerText = 'Stopping and processing...';
     }
 
     function handleKeydown(event) {
@@ -578,9 +589,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       const t_ms = now - recordingStartPerf;
       const keyLabel = event.key === ' ' ? 'space' : event.key;
       keyEvents.push({ key: keyLabel, t_ms });
-      const pressed = keyEvents.map(k=>k.key).slice(-50);
-      keyListEl.textContent = pressed.join(', ');
-      statusEl.innerText = `Captured ${keyEvents.length} keys`;
+      keyListEl.textContent = keyEvents.map(k=>k.key).slice(-30).join(', ');
     }
 
     function writeString(view, offset, string) {
@@ -631,15 +640,24 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     async function uploadToGoogleDrive(zipBlob, metadata) {
       try {
         statusEl.innerText = 'Uploading to Google Drive...';
+        console.log('Starting upload...');
+        
         const reader = new FileReader();
-        const base64Data = await new Promise((resolve) => {
+        const base64Data = await new Promise((resolve, reject) => {
           reader.onloadend = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
           reader.readAsDataURL(zipBlob);
         });
 
+        console.log('ZIP converted to base64, length:', base64Data.length);
+
         const typingSpeed = calculateTypingSpeed();
+        console.log('Typing speed:', typingSpeed);
         
-        const response = await fetch(`${API_BASE}/upload-to-drive`, {
+        const zipFileName = `${currentParticipantId}_S${currentSessionNumber}_${genderEl.value}_${handEl.value}.zip`;
+        console.log('Uploading file:', zipFileName);
+        
+        const uploadResponse = await fetch(`${API_BASE}/upload-to-drive`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -649,40 +667,58 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
             gender: genderEl.value,
             handedness: handEl.value,
             zipData: base64Data,
-            zipFileName: `${metaPrefix()}_session_${currentSessionNumber}.zip`,
-            metadata
+            zipFileName
           })
         });
         
-        const result = await response.json();
-        if (result.success) {
-          statusEl.innerText = `Uploaded! Updating CSV...`;
-          
-          await fetch(`${API_BASE}/update-csv`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              deviceId: currentDeviceId,
-              participantId: currentParticipantId,
-              session: currentSessionNumber,
-              gender: genderEl.value,
-              handedness: handEl.value,
-              totalKeys: keyEvents.length,
-              browserInfo,
-              osInfo: browserInfo.os,
-              typingSpeed: typingSpeed.wpm,
-              typingCategory: typingSpeed.category
-            })
-          });
-          
-          statusEl.innerText = `✓ Complete! WPM: ${typingSpeed.wpm} (${typingSpeed.category})`;
-          
-          // Clear textarea after successful upload
-          inputArea.value = '';
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error('Upload failed:', errorText);
+          throw new Error(`Upload failed: ${errorText}`);
         }
+        
+        const uploadResult = await uploadResponse.json();
+        console.log('Upload successful:', uploadResult);
+        
+        if (!uploadResult.success) {
+          throw new Error('Upload reported failure');
+        }
+        
+        statusEl.innerText = 'Updating CSV...';
+        
+        const csvResponse = await fetch(`${API_BASE}/update-csv`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deviceId: currentDeviceId,
+            participantId: currentParticipantId,
+            session: currentSessionNumber,
+            gender: genderEl.value,
+            handedness: handEl.value,
+            totalKeys: keyEvents.length,
+            browserInfo,
+            osInfo: browserInfo.os,
+            typingSpeed: typingSpeed.wpm,
+            typingCategory: typingSpeed.category
+          })
+        });
+        
+        if (!csvResponse.ok) {
+          console.error('CSV update failed');
+        } else {
+          console.log('CSV updated successfully');
+        }
+        
+        statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | File uploaded successfully`;
+        inputArea.value = '';
+        
+        setTimeout(() => {
+          alert(`Recording complete!\n\nParticipant: ${currentParticipantId}\nSession: ${currentSessionNumber}\nTyping Speed: ${typingSpeed.wpm} WPM (${typingSpeed.category})\n\nFile uploaded to Google Drive!`);
+        }, 500);
+        
       } catch (err) {
-        console.error('Upload failed:', err);
-        statusEl.innerText = 'Upload failed. File saved locally only.';
+        console.error('Upload process error:', err);
+        statusEl.innerText = `❌ Upload failed: ${err.message}. File saved locally.`;
       }
     }
 
@@ -694,10 +730,9 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         }
         
         const wholeBlob = new Blob(recordedChunks, { type: recordedChunks[0].type || 'audio/webm' });
-        const wholeExt = (recordedChunks[0] && recordedChunks[0].type && recordedChunks[0].type.includes('webm')) ? 'webm' : 'ogg';
         const arrayBuffer = await wholeBlob.arrayBuffer();
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+        const decoded = await audioCtx.decodeAudioData(arrayBuffer);
         
         const typingSpeed = calculateTypingSpeed();
         
@@ -707,11 +742,14 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         sessionMetadata.keys = keyEvents.map(k => ({ key: k.key, t_ms: k.t_ms }));
         sessionMetadata.typing_speed = typingSpeed.wpm;
         sessionMetadata.typing_category = typingSpeed.category;
-        sessionMetadata.generated_at = (new Date()).toISOString();
+        sessionMetadata.generated_at = new Date().toISOString();
         sessionMetadata.total_events = keyEvents.length;
 
         const zip = new JSZip();
-        zip.file(`${metaPrefix()}_continuous.${wholeExt}`, wholeBlob);
+        const wholeExt = wholeBlob.type.includes('webm') ? 'webm' : 'ogg';
+        zip.file(`continuous_audio.${wholeExt}`, wholeBlob);
+
+        statusEl.innerText = `Processing ${keyEvents.length} keys...`;
 
         const filesMeta = [];
         for (let i = 0; i < keyEvents.length; i++) {
@@ -721,6 +759,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
           const startSample = Math.floor(start_s * decoded.sampleRate);
           const endSample = Math.ceil(end_s * decoded.sampleRate);
           const sliceLength = endSample - startSample;
+          
           if (sliceLength <= 0) continue;
 
           const numChannels = decoded.numberOfChannels;
@@ -734,36 +773,39 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
           if (wavBlob.size < MIN_SLICE_BYTES) continue;
 
           const keySafe = String(ev.key).replace(/[^a-zA-Z0-9_-]/g, '') || 'key';
-          const filename = `${metaPrefix()}_key${String(i+1).padStart(4,'0')}_${keySafe}_${Math.round(ev.t_ms)}ms.wav`;
+          const filename = `key_${String(i+1).padStart(4,'0')}_${keySafe}_${Math.round(ev.t_ms)}ms.wav`;
 
           zip.file(filename, wavBlob);
           filesMeta.push({ filename, key: ev.key, t_ms: ev.t_ms, size_bytes: wavBlob.size });
           
-          if (i % 10 === 0) {
-            statusEl.innerText = `Processing: ${i}/${keyEvents.length}`;
+          if (i % 20 === 0 || i === keyEvents.length - 1) {
+            statusEl.innerText = `Processing: ${i+1}/${keyEvents.length}`;
             await new Promise(r => setTimeout(r, 1));
           }
         }
 
         sessionMetadata.exported_files = filesMeta;
-        zip.file(`${metaPrefix()}_metadata.json`, JSON.stringify(sessionMetadata, null, 2));
+        zip.file('metadata.json', JSON.stringify(sessionMetadata, null, 2));
 
-        statusEl.innerText = 'Creating ZIP...';
+        statusEl.innerText = 'Creating ZIP file...';
         const zipBlob = await zip.generateAsync({ 
           type: 'blob', 
           compression: 'DEFLATE', 
           compressionOptions: { level: 6 } 
         }, (meta) => {
-          statusEl.innerText = `Zipping: ${Math.round(meta.percent)}%`;
+          statusEl.innerText = `Creating ZIP: ${Math.round(meta.percent)}%`;
         });
+
+        console.log('ZIP created, size:', zipBlob.size);
 
         await uploadToGoogleDrive(zipBlob, sessionMetadata);
 
-        const zipFilename = `${metaPrefix()}_session_${currentSessionNumber}.zip`;
+        const zipFilename = `${currentParticipantId}_S${currentSessionNumber}_${genderEl.value}_${handEl.value}.zip`;
         triggerDownload(zipBlob, zipFilename);
       } catch (err) {
         console.error('Processing error:', err);
-        statusEl.innerText = 'Error: ' + err.message;
+        statusEl.innerText = `Error: ${err.message}`;
+        alert('Processing error: ' + err.message);
       }
     }
 

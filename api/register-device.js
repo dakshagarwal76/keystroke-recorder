@@ -1,9 +1,8 @@
-const { getDriveClient, ensureFolder, uploadFile, getFileContent, updateFile } = require('../lib/drive-client');
+const { getDriveClient, uploadFile, getFileContent, updateFile } = require('../lib/drive-client');
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   if (req.method === 'OPTIONS') {
@@ -15,10 +14,17 @@ module.exports = async (req, res) => {
   }
   
   try {
+    console.log('=== REGISTER DEVICE START ===');
     const { deviceFingerprint, browserInfo, osInfo } = req.body;
+    console.log('Device fingerprint:', deviceFingerprint);
+    
+    if (!process.env.DRIVE_FOLDER_ID) {
+      throw new Error('DRIVE_FOLDER_ID not configured');
+    }
     
     const drive = getDriveClient();
     const rootFolderId = process.env.DRIVE_FOLDER_ID;
+    console.log('Root folder ID:', rootFolderId);
     
     const fileData = await getFileContent(drive, 'devices.json', rootFolderId);
     let devices = {};
@@ -27,9 +33,13 @@ module.exports = async (req, res) => {
     if (fileData) {
       devicesFileId = fileData.id;
       devices = typeof fileData.content === 'string' ? JSON.parse(fileData.content) : fileData.content;
+      console.log('Loaded existing devices:', Object.keys(devices).length);
+    } else {
+      console.log('No existing devices.json found');
     }
     
     if (devices[deviceFingerprint]) {
+      console.log('Device already exists:', devices[deviceFingerprint].deviceId);
       return res.json({ 
         deviceId: devices[deviceFingerprint].deviceId,
         isNew: false 
@@ -37,6 +47,8 @@ module.exports = async (req, res) => {
     }
     
     const deviceId = `D${String(Object.keys(devices).length + 1).padStart(3, '0')}`;
+    console.log('Creating new device:', deviceId);
+    
     devices[deviceFingerprint] = {
       deviceId,
       browserInfo,
@@ -51,11 +63,14 @@ module.exports = async (req, res) => {
       await uploadFile(drive, rootFolderId, 'devices.json', devicesBuffer, 'application/json');
     }
     
-    await ensureFolder(drive, rootFolderId, deviceId);
-    
+    console.log('=== REGISTER DEVICE SUCCESS ===');
     res.json({ deviceId, isNew: true });
   } catch (error) {
-    console.error('Device registration error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('=== REGISTER DEVICE ERROR ===');
+    console.error('Error details:', error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
