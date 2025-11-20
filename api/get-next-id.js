@@ -86,9 +86,11 @@ export default async function handler(req, res) {
 
       // Also check counter.json for any IDs not yet in folders
       const counterIds = Object.values(counter.deviceParticipants).map(p => {
+        if (!p.participantId || typeof p.participantId !== 'string') return 0;
         const match = p.participantId.match(/^U(\d{3})$/);
         return match ? parseInt(match[1], 10) : 0;
       });
+
       existingIds.push(...counterIds);
 
       // Remove duplicates and sort
