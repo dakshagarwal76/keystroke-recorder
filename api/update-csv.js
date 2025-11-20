@@ -1,6 +1,4 @@
 import { getDriveClient, getFileContent, uploadFile, updateFile } from '../lib/googleDriveClient';
-import { parse } from 'csv-parse/sync';
-import { stringify } from 'csv-stringify/sync';
 
 export default async function handler(req, res) {
   // Add CORS headers
@@ -39,12 +37,13 @@ export default async function handler(req, res) {
 
     // Validate required fields
     if (!deviceId || !participantId || !session || !person) {
+      console.error('Missing required fields');
       return res.status(400).json({ 
         error: 'Missing required fields: deviceId, participantId, session, or person' 
       });
     }
 
-    console.log('CSV data:', {
+    console.log('CSV data received:', {
       deviceId,
       participantId,
       session,
@@ -55,77 +54,60 @@ export default async function handler(req, res) {
     });
 
     // Try to get existing CSV file
-    const fileData = await getFileContent(drive, 'tracking.csv', rootFolderId);
-    let records = [];
     let csvFileId = null;
-
-    if (fileData) {
-      csvFileId = fileData.id;
-      const csvContent = typeof fileData.content === 'string' 
-        ? fileData.content 
-        : fileData.content.toString();
-      
-      try {
-        // Parse existing CSV
-        records = parse(csvContent, { 
-          columns: true, 
-          skip_empty_lines: true,
-          relax_column_count: true
-        });
-        console.log('Existing records:', records.length);
-      } catch (e) {
-        console.log('Error parsing CSV, starting fresh:', e.message);
-        records = [];
+    let csvContent = '';
+    
+    try {
+      const fileData = await getFileContent(drive, 'tracking.csv', rootFolderId);
+      if (fileData) {
+        csvFileId = fileData.id;
+        csvContent = typeof fileData.content === 'string' 
+          ? fileData.content 
+          : fileData.content.toString();
+        console.log('Existing CSV found, size:', csvContent.length);
       }
+    } catch (err) {
+      console.log('No existing CSV file, will create new one');
+    }
+
+    // Parse existing CSV or create header
+    let lines = [];
+    const header = 'timestamp,deviceId,participantId,session,person,gender,handedness,totalKeys,typingSpeed,typingCategory,browser,browserVersion,os,osVersion,deviceType';
+    
+    if (csvContent) {
+      lines = csvContent.split('\n').filter(line => line.trim() !== '');
+      console.log('Existing lines:', lines.length);
     } else {
-      console.log('CSV file not found, will create new one');
+      lines.push(header);
+      console.log('Creating new CSV with header');
     }
 
     // Prepare new record
-    const newRecord = {
-      timestamp: new Date().toISOString(),
-      deviceId,
-      participantId,
-      session: session.toString(),
-      person: person.toString(),
-      gender: gender || 'N/A',
-      handedness: handedness || 'N/A',
-      totalKeys: totalKeys !== undefined ? totalKeys.toString() : '0',
-      typingSpeed: typingSpeed !== undefined ? typingSpeed.toString() : '0',
-      typingCategory: typingCategory || 'N/A',
-      browser: browserInfo?.name || 'Unknown',
-      browserVersion: browserInfo?.version || 'Unknown',
-      os: osInfo?.name || 'Unknown',
-      osVersion: osInfo?.version || 'Unknown',
-      deviceType: browserInfo?.deviceType || 'Unknown'
-    };
+    const newRecord = [
+      new Date().toISOString(),
+      deviceId || '',
+      participantId || '',
+      session?.toString() || '',
+      person?.toString() || '',
+      gender || 'N/A',
+      handedness || 'N/A',
+      totalKeys !== undefined ? totalKeys.toString() : '0',
+      typingSpeed !== undefined ? typingSpeed.toString() : '0',
+      typingCategory || 'N/A',
+      browserInfo?.name || 'Unknown',
+      browserInfo?.version || 'Unknown',
+      osInfo?.name || 'Unknown',
+      osInfo?.version || 'Unknown',
+      browserInfo?.deviceType || 'Unknown'
+    ].join(',');
 
-    // Add new record to records array
-    records.push(newRecord);
-    console.log('Added new record, total records:', records.length);
+    // Add new record
+    lines.push(newRecord);
+    console.log('Added new record, total lines:', lines.length);
 
-    // Convert records array back to CSV string with header
-    const csvContent = stringify(records, { 
-      header: true,
-      columns: [
-        'timestamp',
-        'deviceId',
-        'participantId',
-        'session',
-        'person',
-        'gender',
-        'handedness',
-        'totalKeys',
-        'typingSpeed',
-        'typingCategory',
-        'browser',
-        'browserVersion',
-        'os',
-        'osVersion',
-        'deviceType'
-      ]
-    });
-    const csvBuffer = Buffer.from(csvContent);
+    // Convert back to CSV string
+    const newCsvContent = lines.join('\n') + '\n';
+    const csvBuffer = Buffer.from(newCsvContent, 'utf-8');
 
     // Update existing file or create new one
     if (csvFileId) {
@@ -139,14 +121,17 @@ export default async function handler(req, res) {
     console.log('=== UPDATE CSV SUCCESS ===');
     res.json({ 
       success: true, 
-      recordCount: records.length,
-      newRecord
+      recordCount: lines.length - 1, // minus header
+      message: 'CSV updated successfully'
     });
   } catch (error) {
     console.error('=== UPDATE CSV ERROR ===');
-    console.error('Error details:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
-      error: error.message || 'Internal Server Error' 
+      error: error.message || 'Internal Server Error',
+      details: error.toString()
     });
   }
 }
