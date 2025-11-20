@@ -1010,21 +1010,37 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         const typingSpeed = calculateTypingSpeed();
         console.log('Typing speed:', typingSpeed);
         
-        const zipFileName = `${currentParticipantId}_S${currentSessionNumber}_P${personEl.value}_${genderEl.value}_${handEl.value}.zip`;
+        // Get selected person value
+        const selectedPerson = personEl.value;
+        
+        const zipFileName = `${currentParticipantId}_S${currentSessionNumber}_P${selectedPerson}_${genderEl.value}_${handEl.value}.zip`;
         console.log('Uploading file:', zipFileName);
+        
+        // Prepare upload data - MAKE SURE ALL FIELDS ARE INCLUDED
+        const uploadData = {
+          deviceId: currentDeviceId,
+          participantId: currentParticipantId,
+          session: currentSessionNumber,
+          person: selectedPerson,  // IMPORTANT: Make sure this is included
+          gender: genderEl.value,
+          handedness: handEl.value,
+          zipData: base64Data,
+          zipFileName: zipFileName
+        };
+        
+        console.log('Upload data prepared:', {
+          deviceId: uploadData.deviceId,
+          participantId: uploadData.participantId,
+          session: uploadData.session,
+          person: uploadData.person,
+          fileName: uploadData.zipFileName,
+          dataSize: uploadData.zipData.length
+        });
         
         const uploadResponse = await fetch(`${API_BASE}/upload-to-drive`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            deviceId: currentDeviceId,
-            participantId: currentParticipantId,
-            session: currentSessionNumber,
-            gender: genderEl.value,
-            handedness: handEl.value,
-            zipData: base64Data,
-            zipFileName
-          })
+          body: JSON.stringify(uploadData)
         });
         
         if (!uploadResponse.ok) {
@@ -1042,28 +1058,35 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         
         statusEl.innerText = 'Updating CSV...';
         
+        // UPDATE CSV - Make sure to call this
+        const csvData = {
+          deviceId: currentDeviceId,
+          participantId: currentParticipantId,
+          session: currentSessionNumber,
+          person: selectedPerson,
+          gender: genderEl.value,
+          handedness: handEl.value,
+          totalKeys: keyEvents.length,
+          browserInfo: browserInfo,
+          osInfo: browserInfo.os,
+          typingSpeed: typingSpeed.wpm,
+          typingCategory: typingSpeed.category
+        };
+        
+        console.log('Updating CSV with data:', csvData);
+        
         const csvResponse = await fetch(`${API_BASE}/update-csv`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            deviceId: currentDeviceId,
-            participantId: currentParticipantId,
-            session: currentSessionNumber,
-            person: personEl.value,
-            gender: genderEl.value,
-            handedness: handEl.value,
-            totalKeys: keyEvents.length,
-            browserInfo,
-            osInfo: browserInfo.os,
-            typingSpeed: typingSpeed.wpm,
-            typingCategory: typingSpeed.category
-          })
+          body: JSON.stringify(csvData)
         });
         
         if (!csvResponse.ok) {
-          console.error('CSV update failed');
+          const csvError = await csvResponse.text();
+          console.error('CSV update failed:', csvError);
         } else {
-          console.log('CSV updated successfully');
+          const csvResult = await csvResponse.json();
+          console.log('CSV updated successfully:', csvResult);
         }
         
         statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | File uploaded successfully`;
