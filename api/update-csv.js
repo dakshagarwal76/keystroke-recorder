@@ -3,7 +3,15 @@ import { parse } from 'csv-parse/sync';
 import { stringify } from 'csv-stringify/sync';
 
 export default async function handler(req, res) {
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // Add CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
@@ -30,8 +38,10 @@ export default async function handler(req, res) {
     } = req.body;
 
     // Validate required fields
-    if (!deviceId || !participantId || !session) {
-      return res.status(400).json({ error: 'Missing required fields: deviceId, participantId, or session' });
+    if (!deviceId || !participantId || !session || !person) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: deviceId, participantId, session, or person' 
+      });
     }
 
     console.log('CSV data:', {
@@ -57,7 +67,11 @@ export default async function handler(req, res) {
       
       try {
         // Parse existing CSV
-        records = parse(csvContent, { columns: true, skip_empty_lines: true });
+        records = parse(csvContent, { 
+          columns: true, 
+          skip_empty_lines: true,
+          relax_column_count: true
+        });
         console.log('Existing records:', records.length);
       } catch (e) {
         console.log('Error parsing CSV, starting fresh:', e.message);
@@ -73,7 +87,7 @@ export default async function handler(req, res) {
       deviceId,
       participantId,
       session: session.toString(),
-      person: person || 'N/A',
+      person: person.toString(),
       gender: gender || 'N/A',
       handedness: handedness || 'N/A',
       totalKeys: totalKeys !== undefined ? totalKeys.toString() : '0',
@@ -91,7 +105,26 @@ export default async function handler(req, res) {
     console.log('Added new record, total records:', records.length);
 
     // Convert records array back to CSV string with header
-    const csvContent = stringify(records, { header: true });
+    const csvContent = stringify(records, { 
+      header: true,
+      columns: [
+        'timestamp',
+        'deviceId',
+        'participantId',
+        'session',
+        'person',
+        'gender',
+        'handedness',
+        'totalKeys',
+        'typingSpeed',
+        'typingCategory',
+        'browser',
+        'browserVersion',
+        'os',
+        'osVersion',
+        'deviceType'
+      ]
+    });
     const csvBuffer = Buffer.from(csvContent);
 
     // Update existing file or create new one
@@ -104,10 +137,16 @@ export default async function handler(req, res) {
     }
 
     console.log('=== UPDATE CSV SUCCESS ===');
-    res.json({ success: true, recordCount: records.length });
+    res.json({ 
+      success: true, 
+      recordCount: records.length,
+      newRecord
+    });
   } catch (error) {
     console.error('=== UPDATE CSV ERROR ===');
     console.error('Error details:', error);
-    res.status(500).json({ error: error.message || 'Internal Server Error' });
+    res.status(500).json({ 
+      error: error.message || 'Internal Server Error' 
+    });
   }
 }

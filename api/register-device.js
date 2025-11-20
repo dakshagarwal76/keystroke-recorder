@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     });
 
     // Simply return the fingerprint as deviceId
-    // Don't create any folders yet
+    // Don't create any folders yet to avoid empty folders
     return res.status(200).json({ 
       deviceId: deviceFingerprint,
       success: true 

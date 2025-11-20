@@ -392,6 +392,16 @@
         font-size: 1.45em;
       }
     }
+
+  select option:disabled {
+    color: #999;
+    font-style: italic;
+  }
+
+  body.dark-mode select option:disabled {
+    color: #666;
+  }
+
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
@@ -632,6 +642,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     let currentSessionNumber = 1;
     let typingStartTime = null;
     let totalCharactersTyped = 0;
+    let unlockedPersons = [1];
 
     let stream = null;
     let mediaRecorder = null;
@@ -725,6 +736,8 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     }
 
     // ==================== PARTICIPANT ID GENERATION ====================
+
+
     async function getNextParticipantId() {
       if (!currentDeviceId) {
         console.error('Cannot get participant ID: no device ID');
@@ -757,18 +770,58 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         
         currentParticipantId = data.participantId;
         currentSessionNumber = data.sessionNumber || 1;
+        unlockedPersons = data.unlockedPersons || [1]; // GET UNLOCKED PERSONS FROM API
         
         pidEl.value = currentParticipantId;
         sessionEl.value = currentSessionNumber;
         sessionInfo.innerText = `Session ${currentSessionNumber}`;
+        
+        // UPDATE PERSON DROPDOWN BASED ON UNLOCKED PERSONS
+        updatePersonDropdown();
+        
         statusEl.innerText = `Ready! ${currentParticipantId}, Session ${currentSessionNumber}`;
-        console.log('Setup complete:', { currentParticipantId, currentSessionNumber });
+        console.log('Setup complete:', { 
+          currentParticipantId, 
+          currentSessionNumber, 
+          unlockedPersons 
+        });
       } catch (err) {
         console.error('Get participant ID error:', err);
         statusEl.innerText = `ID generation failed: ${err.message}. Check console.`;
         alert('Participant ID generation failed. Check console (F12) for details.');
       }
     }
+
+    // New function to update person dropdown
+    // New function to update person dropdown based on unlocked persons
+    function updatePersonDropdown() {
+      const allOptions = personEl.querySelectorAll('option');
+      
+      allOptions.forEach(option => {
+        const personNum = parseInt(option.value);
+        
+        if (unlockedPersons.includes(personNum)) {
+          // Person is unlocked
+          option.disabled = false;
+          option.style.color = '';
+          option.textContent = `Person ${personNum}`;
+        } else {
+          // Person is locked
+          option.disabled = true;
+          option.style.color = '#999';
+          option.textContent = `Person ${personNum} 🔒 (Complete Person ${personNum - 1} first)`;
+        }
+      });
+      
+      // Set to first unlocked person if current selection is locked
+      const currentPerson = parseInt(personEl.value);
+      if (!unlockedPersons.includes(currentPerson)) {
+        personEl.value = String(unlockedPersons[0]);
+      }
+      
+      console.log('Person dropdown updated. Unlocked:', unlockedPersons);
+    }
+
 
     // ==================== TYPING SPEED CALCULATION ====================
     function calculateTypingSpeed() {
@@ -1044,19 +1097,22 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
           <p style="margin-bottom: 16px; color: #555; font-size: 0.95em;">Your feedback is valuable for our research. Each form takes about 2-3 minutes.</p>
           <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
             <a href="https://docs.google.com/forms/d/e/1FAIpQLSewQ-ZdYvG7QtxooKVKzcr12ag4PylnmRQR5kZo5qRzbIycfQ/viewform" 
-               target="_blank" 
-               class="form-link-btn"
-               style="flex: 1; min-width: 200px; display: inline-block; padding: 14px 20px; background: #4a90e2; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; text-align: center; transition: all 0.2s;">
+              target="_blank" 
+              class="form-link-btn"
+              style="flex: 1; min-width: 200px; display: inline-block; padding: 14px 20px; background: #4a90e2; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; text-align: center; transition: all 0.2s;">
               📝 Form 1: Background Information
             </a>
             <a href="https://docs.google.com/forms/d/e/1FAIpQLSc_zpIaQNj3zUEvylUjD4bvMnSiGveKSTtRV7uaBceEr97hyA/viewform" 
-               target="_blank" 
-               class="form-link-btn"
-               style="flex: 1; min-width: 200px; display: inline-block; padding: 14px 20px; background: #4a90e2; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; text-align: center; transition: all 0.2s;">
+              target="_blank" 
+              class="form-link-btn"
+              style="flex: 1; min-width: 200px; display: inline-block; padding: 14px 20px; background: #4a90e2; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; text-align: center; transition: all 0.2s;">
               📝 Form 2: User Feedback
             </a>
           </div>
           <p style="margin-top: 16px; font-size: 0.9em; color: #666; text-align: center;">✓ Forms will open in new tabs</p>
+          <p style="margin-top: 12px; font-size: 0.9em; color: #0369a1; text-align: center; font-weight: 600;">
+            💡 Tip: Reload this page to continue with the next person!
+          </p>
         </div>
       `;
       
