@@ -15,20 +15,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing deviceId' });
     }
 
-    // Load participants/session counter
+    // Load counter file from Drive
     const fileData = await getFileContent(drive, 'counter.json', rootFolderId);
     let counter = { lastId: 0, deviceParticipants: {} };
     let counterFileId = null;
 
     if (fileData) {
       counterFileId = fileData.id;
-      counter = typeof fileData.content === 'string'
-        ? JSON.parse(fileData.content)
-        : fileData.content;
+      counter = typeof fileData.content === 'string' ? JSON.parse(fileData.content) : fileData.content;
       if (!counter.deviceParticipants) counter.deviceParticipants = {};
     }
 
-    // Assign participant ID for device
+    // Assign or re-use participant ID for this device
     let participantId;
     if (!counter.deviceParticipants[deviceId]) {
       counter.lastId += 1;
@@ -42,12 +40,12 @@ export default async function handler(req, res) {
       participantId = counter.deviceParticipants[deviceId].participantId;
     }
 
-    // Increment session count ONLY when this endpoint is called
+    // Increment session count on each call (i.e., on each reload/load)
     counter.deviceParticipants[deviceId].sessionCount += 1;
     counter.deviceParticipants[deviceId].lastAccess = new Date().toISOString();
     const nextSessionNumber = counter.deviceParticipants[deviceId].sessionCount;
 
-    // Save updated counter
+    // Save updated counter file to Google Drive
     const counterBuffer = Buffer.from(JSON.stringify(counter, null, 2));
     if (counterFileId) {
       await updateFile(drive, counterFileId, counterBuffer, 'application/json');
@@ -55,6 +53,7 @@ export default async function handler(req, res) {
       await uploadFile(drive, rootFolderId, 'counter.json', counterBuffer, 'application/json');
     }
 
+    // Respond with participant and session info
     res.json({ participantId, sessionNumber: nextSessionNumber });
   } catch (error) {
     console.error('Get next ID error:', error);

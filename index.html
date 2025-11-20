@@ -5,38 +5,124 @@
   <title>Keystroke Sound Recorder (WAV)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    :root {
+      --bg-primary: #f5f7fa;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f8fafc;
+      --bg-note: #fff7ed;
+      --bg-badge: #e0f2fe;
+      --text-primary: #222;
+      --text-secondary: #555;
+      --text-muted: #666;
+      --text-badge: #0369a1;
+      --text-note: #7c2d12;
+      --border-color: #ddd;
+      --border-light: #e5e7eb;
+      --border-note: #fed7aa;
+      --shadow: rgba(0, 0, 0, 0.08);
+      --shadow-inset: rgba(0, 0, 0, 0.05);
+      --input-disabled: #f0f0f0;
+      --accent-primary: #4a90e2;
+      --accent-hover: #357ab8;
+      --btn-secondary: #6b7280;
+      --btn-secondary-hover: #4b5563;
+      --pre-bg: #f8fafc;
+      --pre-text: #1f2937;
+      --pre-border: #e5e7eb;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #1a1a1a;
+      --bg-secondary: #2d2d2d;
+      --bg-tertiary: #242424;
+      --bg-note: #2c1810;
+      --bg-badge: #1e3a5f;
+      --text-primary: #e5e5e5;
+      --text-secondary: #b8b8b8;
+      --text-muted: #999;
+      --text-badge: #60a5fa;
+      --text-note: #fbbf24;
+      --border-color: #444;
+      --border-light: #3a3a3a;
+      --border-note: #92400e;
+      --shadow: rgba(0, 0, 0, 0.3);
+      --shadow-inset: rgba(0, 0, 0, 0.2);
+      --input-disabled: #3a3a3a;
+      --accent-primary: #5b9ef5;
+      --accent-hover: #4a8dd8;
+      --btn-secondary: #6b7280;
+      --btn-secondary-hover: #9ca3af;
+      --pre-bg: #242424;
+      --pre-text: #e5e5e5;
+      --pre-border: #3a3a3a;
+    }
+
+    * {
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: #f5f7fa;
+      background: var(--bg-primary);
       display: flex;
       justify-content: center;
       align-items: start;
       min-height: 100vh;
       margin: 0;
       padding: 24px;
-      color: #222;
+      color: var(--text-primary);
     }
     .container {
-      background: #ffffff;
+      background: var(--bg-secondary);
       padding: 24px;
       border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 20px var(--shadow);
       width: 100%;
       max-width: 900px;
+      position: relative;
     }
+
+    .theme-toggle {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      background: var(--accent-primary);
+      border: none;
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px var(--shadow);
+      transition: all 0.3s ease;
+      z-index: 10;
+    }
+    .theme-toggle:hover {
+      background: var(--accent-hover);
+      transform: scale(1.1);
+    }
+    .theme-toggle svg {
+      width: 22px;
+      height: 22px;
+      fill: white;
+    }
+
     h1 {
       font-size: 1.8em;
-      color: #333;
+      color: var(--text-primary);
       margin: 0 0 6px 0;
+      padding-right: 60px;
     }
     h2 {
       margin: 24px 0 8px;
       font-size: 1.2em;
-      color: #333;
+      color: var(--text-primary);
     }
     p {
       font-size: 0.98em;
-      color: #555;
+      color: var(--text-secondary);
       margin: 0 0 14px 0;
       line-height: 1.5;
     }
@@ -49,7 +135,7 @@
     }
     label {
       font-size: 0.92em;
-      color: #333;
+      color: var(--text-primary);
       display: block;
       margin-bottom: 6px;
     }
@@ -57,36 +143,38 @@
       width: 100%;
       padding: 10px 12px;
       font-size: 1em;
-      border: 2px solid #ddd;
+      border: 2px solid var(--border-color);
       border-radius: 8px;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-      transition: border-color 0.2s;
-      background: #fff;
+      box-shadow: inset 0 1px 3px var(--shadow-inset);
+      transition: all 0.2s;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
     }
     input:disabled, select:disabled {
-      background: #f0f0f0;
-      color: #666;
+      background: var(--input-disabled);
+      color: var(--text-muted);
       cursor: not-allowed;
     }
     input:focus, select:focus, textarea:focus {
       outline: none;
-      border-color: #4a90e2;
+      border-color: var(--accent-primary);
     }
     textarea {
       width: 100%;
       padding: 14px;
       font-size: 1.05em;
-      border: 2px solid #ddd;
+      border: 2px solid var(--border-color);
       border-radius: 8px;
       resize: vertical;
       min-height: 160px;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
-      transition: border-color 0.2s;
-      background: #fff;
+      box-shadow: inset 0 1px 3px var(--shadow-inset);
+      transition: all 0.2s;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
     }
     .btn {
-      background-color: #4a90e2;
-      color: #fff;
+      background-color: var(--accent-primary);
+      color: #000000;
       border: none;
       padding: 10px 18px;
       font-size: 0.98em;
@@ -94,15 +182,15 @@
       cursor: pointer;
       transition: background-color 0.2s ease;
     }
-    .btn:hover { background-color: #357ab8; }
+    .btn:hover { background-color: var(--accent-hover); }
     .btn:disabled {
       background-color: #ccc;
       cursor: not-allowed;
     }
     .btn.secondary {
-      background-color: #6b7280;
+      background-color: var(--btn-secondary);
     }
-    .btn.secondary:hover { background-color: #4b5563; }
+    .btn.secondary:hover { background-color: var(--btn-secondary-hover); }
     .button-row {
       display: flex;
       flex-wrap: wrap;
@@ -110,31 +198,31 @@
       margin-top: 12px;
     }
     .muted {
-      color: #666;
+      color: var(--text-muted);
       font-size: 0.9em;
     }
     .status {
       margin-top: 12px;
       font-size: 0.95em;
-      color: #444;
+      color: var(--text-primary);
       min-height: 24px;
     }
     .pressed-keys {
       margin-top: 10px;
       font-size: 0.95em;
-      color: #222;
+      color: var(--text-primary);
       word-wrap: break-word;
     }
     pre {
       white-space: pre-wrap;
       word-break: break-word;
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
+      background: var(--pre-bg);
+      border: 1px solid var(--pre-border);
       border-radius: 8px;
       padding: 12px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 0.95em;
-      color: #1f2937;
+      color: var(--pre-text);
     }
     .consent {
       display: flex;
@@ -143,28 +231,44 @@
       margin: 10px 0 4px;
     }
     .note {
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
-      color: #7c2d12;
+      background: var(--bg-note);
+      border: 1px solid var(--border-note);
+      color: var(--text-note);
       padding: 10px 12px;
       border-radius: 8px;
       font-size: 0.95em;
     }
     .info-badge {
       display: inline-block;
-      background: #e0f2fe;
-      color: #0369a1;
+      background: var(--bg-badge);
+      color: var(--text-badge);
       padding: 4px 10px;
       border-radius: 4px;
       font-size: 0.9em;
       margin-top: 8px;
     }
-    .sep { height: 1px; background: #e5e7eb; margin: 18px 0; }
+    .sep { height: 1px; background: var(--border-light); margin: 18px 0; }
+
+    footer {
+      margin-top: 40px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-light);
+      text-align: center;
+      font-size: 0.9em;
+      color: var(--text-secondary);
+    }
+
+
+
+
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
   <div class="container">
+    <!-- Dark Mode Toggle Button -->
+
+
     <h1>Keystroke Sound Recorder</h1>
     <p class="muted">
       This page records short audio snippets around each key press while you type a standardized paragraph.
@@ -204,6 +308,14 @@
         <label for="session">Session Number</label>
         <input id="session" type="number" min="1" value="1" readonly disabled />
         <span class="info-badge" id="sessionInfo">Auto-detected</span>
+      </div>
+      <div>
+        <label for="person">Person</label>
+        <select id="person">
+          <option value="1">Person 1</option>
+          <option value="2">Person 2</option>
+          <option value="3">Person 3</option>
+        </select>
       </div>
       <div>
         <label for="gender">Gender</label>
@@ -257,13 +369,45 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       <strong>Keys Pressed:</strong> <span id="keyList"></span>
     </div>
 
-    <footer style="margin-top: 40px; padding-top: 12px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 0.9em; color: #555;">
+    <footer>
       Developed by <strong>Vikrant Vikram</strong> | For Research Purpose
     </footer>
   </div>
 
   <script>
-    // Device Detection (same as before)
+    // Dark Mode Toggle Implementation
+    (function initTheme() {
+      const htmlElement = document.documentElement;
+      const themeToggle = document.getElementById('themeToggle');
+      const sunIcon = document.getElementById('sunIcon');
+      const moonIcon = document.getElementById('moonIcon');
+
+      // Check for saved theme preference or default to 'light'
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      htmlElement.setAttribute('data-theme', currentTheme);
+      updateIcons(currentTheme);
+
+      function updateIcons(theme) {
+        if (theme === 'dark') {
+          sunIcon.style.display = 'none';
+          moonIcon.style.display = 'block';
+        } else {
+          sunIcon.style.display = 'block';
+          moonIcon.style.display = 'none';
+        }
+      }
+
+      themeToggle.addEventListener('click', function() {
+        const currentTheme = htmlElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        htmlElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateIcons(newTheme);
+      });
+    })();
+
+    // Device Detection
     function detectBrowser() {
       const userAgent = navigator.userAgent;
       const browsers = [
@@ -277,7 +421,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         const match = userAgent.match(regex);
         return match ? match[1] : 'Unknown';
       };
-      
+
       const detectOS = () => {
         if (/Win/.test(userAgent)) return { name: 'Windows', version: (userAgent.match(/Windows NT ([0-9.]+)/) || [])[1] || 'Unknown' };
         if (/Mac/.test(userAgent)) return { name: 'MacOS', version: (userAgent.match(/Mac OS X ([0-9._]+)/) || [])[1]?.replace(/_/g, '.') || 'Unknown' };
@@ -337,12 +481,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       return Math.abs(hash).toString(36);
     }
 
-    // const browserInfo = detectBrowser();
-    // if (browserInfo.deviceType !== 'desktop') {
-    //   document.body.innerHTML = '<div style="text-align:center;margin-top:100px;"><h1>Access Restricted</h1><p>This application only works on PC/Laptop.</p></div>';
-    //   throw new Error('Device not supported');
-    // }
-      const browserInfo = detectBrowser();
+    const browserInfo = detectBrowser();
     const API_BASE = '/api';
     let currentDeviceId = null;
     let currentParticipantId = null;
@@ -362,7 +501,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     const POST_MS = 200;
 
     let statusEl, keyListEl, inputArea, startBtn, stopBtn, consentChk;
-    let pidEl, sessionEl, genderEl, handEl;
+    let pidEl, sessionEl, genderEl, handEl, personEl;
     let deviceIdDisplay, osDisplay, browserDisplay, deviceTypeDisplay, sessionInfo;
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -376,6 +515,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       sessionEl = document.getElementById('session');
       genderEl = document.getElementById('gender');
       handEl = document.getElementById('hand');
+      personEl = document.getElementById('person');
       deviceIdDisplay = document.getElementById('deviceIdDisplay');
       osDisplay = document.getElementById('osDisplay');
       browserDisplay = document.getElementById('browserDisplay');
@@ -530,6 +670,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         participant: {
           id: currentParticipantId,
           session: currentSessionNumber,
+          person: personEl.value,
           gender: genderEl.value,
           handedness: handEl.value
         },
@@ -693,6 +834,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
             deviceId: currentDeviceId,
             participantId: currentParticipantId,
             session: currentSessionNumber,
+            person: personEl.value,
             gender: genderEl.value,
             handedness: handEl.value,
             totalKeys: keyEvents.length,
