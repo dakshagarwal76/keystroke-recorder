@@ -2,291 +2,420 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Keystroke Sound Recorder (WAV)</title>
+  <title>Keystroke Sound Recorder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    :root {
-      --bg-primary: #f5f7fa;
-      --bg-secondary: #ffffff;
-      --bg-tertiary: #f8fafc;
-      --bg-note: #fff7ed;
-      --bg-badge: #e0f2fe;
-      --text-primary: #222;
-      --text-secondary: #555;
-      --text-muted: #666;
-      --text-badge: #0369a1;
-      --text-note: #7c2d12;
-      --border-color: #ddd;
-      --border-light: #e5e7eb;
-      --border-note: #fed7aa;
-      --shadow: rgba(0, 0, 0, 0.08);
-      --shadow-inset: rgba(0, 0, 0, 0.05);
-      --input-disabled: #f0f0f0;
-      --accent-primary: #4a90e2;
-      --accent-hover: #357ab8;
-      --btn-secondary: #6b7280;
-      --btn-secondary-hover: #4b5563;
-      --pre-bg: #f8fafc;
-      --pre-text: #1f2937;
-      --pre-border: #e5e7eb;
-    }
-
-    [data-theme="dark"] {
-      --bg-primary: #1a1a1a;
-      --bg-secondary: #2d2d2d;
-      --bg-tertiary: #242424;
-      --bg-note: #2c1810;
-      --bg-badge: #1e3a5f;
-      --text-primary: #e5e5e5;
-      --text-secondary: #b8b8b8;
-      --text-muted: #999;
-      --text-badge: #60a5fa;
-      --text-note: #fbbf24;
-      --border-color: #444;
-      --border-light: #3a3a3a;
-      --border-note: #92400e;
-      --shadow: rgba(0, 0, 0, 0.3);
-      --shadow-inset: rgba(0, 0, 0, 0.2);
-      --input-disabled: #3a3a3a;
-      --accent-primary: #5b9ef5;
-      --accent-hover: #4a8dd8;
-      --btn-secondary: #6b7280;
-      --btn-secondary-hover: #9ca3af;
-      --pre-bg: #242424;
-      --pre-text: #e5e5e5;
-      --pre-border: #3a3a3a;
-    }
-
-    * {
-      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-    }
-
+    * { box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: var(--bg-primary);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f7fa;
       display: flex;
       justify-content: center;
       align-items: start;
       min-height: 100vh;
       margin: 0;
       padding: 24px;
-      color: var(--text-primary);
+      color: #222;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark-mode {
+      background: #121212;
+      color: #eee;
     }
     .container {
-      background: var(--bg-secondary);
-      padding: 24px;
+      background: #fff;
+      padding: 32px;
       border-radius: 12px;
-      box-shadow: 0 4px 20px var(--shadow);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       width: 100%;
-      max-width: 900px;
-      position: relative;
+      max-width: 1000px;
+    }
+    body.dark-mode .container {
+      background: #1e1e1e;
+      color: #eee;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
     }
 
-    .theme-toggle {
-      position: absolute;
-      top: 24px;
-      right: 24px;
-      background: var(--accent-primary);
-      border: none;
-      border-radius: 50%;
-      width: 45px;
-      height: 45px;
-      cursor: pointer;
+    /* Dark Mode Slider Switch */
+    #darkModeSwitchContainer {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 16px;
+    }
+    .switch {
       display: flex;
       align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 8px var(--shadow);
-      transition: all 0.3s ease;
-      z-index: 10;
+      gap: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      user-select: none;
     }
-    .theme-toggle:hover {
-      background: var(--accent-hover);
-      transform: scale(1.1);
+    .switch input[type="checkbox"] {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
     }
-    .theme-toggle svg {
-      width: 22px;
-      height: 22px;
-      fill: white;
+    .slider {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+      background: #ccc;
+      border-radius: 99px;
+      transition: background 0.3s;
+      vertical-align: middle;
+    }
+    .slider:before {
+      content: "";
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      transition: transform 0.3s, background 0.3s;
+    }
+    .switch input:checked + .slider {
+      background: #4a90e2;
+    }
+    .switch input:checked + .slider:before {
+      transform: translateX(20px);
+      background: #fffde4;
+    }
+    .switch-label {
+      display: inline-block;
+      margin-left: 12px;
+      font-size: 1em;
+      color: #333;
+      transition: color 0.3s;
+    }
+    body.dark-mode .switch-label {
+      color: #f9fafb;
+    }
+    body.dark-mode .slider {
+      background: #374151;
+    }
+    body.dark-mode .switch input:checked + .slider {
+      background: #ffd600;
     }
 
     h1 {
-      font-size: 1.8em;
-      color: var(--text-primary);
-      margin: 0 0 6px 0;
-      padding-right: 60px;
+      font-size: 2em;
+      margin: 0 0 10px 0;
+      font-weight: 600;
+      color: #333;
+    }
+    body.dark-mode h1 {
+      color: #eee;
     }
     h2 {
-      margin: 24px 0 8px;
-      font-size: 1.2em;
-      color: var(--text-primary);
+      margin: 32px 0 16px;
+      font-size: 1.3em;
+      color: #333;
+      font-weight: 600;
+    }
+    body.dark-mode h2 {
+      color: #eee;
     }
     p {
       font-size: 0.98em;
-      color: var(--text-secondary);
+      color: #555;
       margin: 0 0 14px 0;
-      line-height: 1.5;
+      line-height: 1.6;
     }
-    .grid {
+    body.dark-mode p {
+      color: #ccc;
+    }
+
+    .device-grid,
+    .participant-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px;
+      gap: 16px;
       margin-top: 10px;
       margin-bottom: 10px;
     }
+    .device-grid {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .participant-grid {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
     label {
       font-size: 0.92em;
-      color: var(--text-primary);
+      color: #333;
       display: block;
       margin-bottom: 6px;
+      font-weight: 500;
     }
-    input[type="text"], input[type="number"], select {
+    body.dark-mode label {
+      color: #ddd;
+    }
+    input[type="text"],
+    input[type="number"],
+    select {
       width: 100%;
       padding: 10px 12px;
       font-size: 1em;
-      border: 2px solid var(--border-color);
+      border: 2px solid #ddd;
       border-radius: 8px;
-      box-shadow: inset 0 1px 3px var(--shadow-inset);
-      transition: all 0.2s;
-      background: var(--bg-secondary);
-      color: var(--text-primary);
+      background: #fff;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+      transition: border-color 0.2s;
     }
-    input:disabled, select:disabled {
-      background: var(--input-disabled);
-      color: var(--text-muted);
+    input:disabled,
+    select:disabled {
+      background: #f0f0f0;
+      color: #666;
       cursor: not-allowed;
     }
-    input:focus, select:focus, textarea:focus {
+    input:focus,
+    select:focus,
+    textarea:focus {
       outline: none;
-      border-color: var(--accent-primary);
+      border-color: #4a90e2;
+    }
+    body.dark-mode input,
+    body.dark-mode select,
+    body.dark-mode textarea {
+      background: #2c2c2c;
+      color: #eee;
+      border-color: #555;
+    }
+    body.dark-mode input:disabled,
+    body.dark-mode select:disabled {
+      background: #444;
+      color: #aaa;
     }
     textarea {
       width: 100%;
       padding: 14px;
       font-size: 1.05em;
-      border: 2px solid var(--border-color);
+      border: 2px solid #ddd;
       border-radius: 8px;
       resize: vertical;
       min-height: 160px;
-      box-shadow: inset 0 1px 3px var(--shadow-inset);
-      transition: all 0.2s;
-      background: var(--bg-secondary);
-      color: var(--text-primary);
+      background: #fff;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+      transition: border-color 0.2s;
+      font-family: 'Segoe UI', sans-serif;
     }
+    textarea:disabled {
+      background: #f0f0f0;
+      color: #666;
+    }
+    body.dark-mode textarea {
+      background: #2c2c2c;
+      color: #eee;
+    }
+    body.dark-mode textarea:disabled {
+      background: #444;
+      color: #aaa;
+    }
+
     .btn {
-      background-color: var(--accent-primary);
-      color: #000000;
+      background-color: #4a90e2;
+      color: #fff;
       border: none;
-      padding: 10px 18px;
-      font-size: 0.98em;
-      border-radius: 6px;
+      padding: 12px 20px;
+      font-size: 1em;
+      border-radius: 8px;
       cursor: pointer;
-      transition: background-color 0.2s ease;
+      transition: background-color 0.2s, transform 0.1s;
+      font-weight: 600;
     }
-    .btn:hover { background-color: var(--accent-hover); }
+    .btn:hover {
+      background-color: #357ab8;
+      transform: translateY(-1px);
+    }
+    .btn:active {
+      transform: translateY(0);
+    }
     .btn:disabled {
       background-color: #ccc;
       cursor: not-allowed;
+      transform: none;
     }
     .btn.secondary {
-      background-color: var(--btn-secondary);
+      background-color: #6b7280;
     }
-    .btn.secondary:hover { background-color: var(--btn-secondary-hover); }
+    .btn.secondary:hover {
+      background-color: #4b5563;
+    }
     .button-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
+      gap: 12px;
+      margin-top: 16px;
+      align-items: center;
     }
+    body.dark-mode .btn {
+      background-color: #357ab8;
+    }
+    body.dark-mode .btn:hover {
+      background-color: #2563eb;
+    }
+    body.dark-mode .btn.secondary {
+      background: #4b5563;
+    }
+    body.dark-mode .btn.secondary:hover {
+      background: #374151;
+    }
+
     .muted {
-      color: var(--text-muted);
+      color: #666;
       font-size: 0.9em;
     }
+    body.dark-mode .muted {
+      color: #999;
+    }
     .status {
-      margin-top: 12px;
-      font-size: 0.95em;
-      color: var(--text-primary);
+      margin-top: 16px;
+      font-size: 1em;
+      color: #444;
       min-height: 24px;
+      font-weight: 500;
+    }
+    body.dark-mode .status {
+      color: #ddd;
     }
     .pressed-keys {
-      margin-top: 10px;
+      margin-top: 12px;
       font-size: 0.95em;
-      color: var(--text-primary);
+      color: #222;
       word-wrap: break-word;
+    }
+    body.dark-mode .pressed-keys {
+      color: #ddd;
     }
     pre {
       white-space: pre-wrap;
       word-break: break-word;
-      background: var(--pre-bg);
-      border: 1px solid var(--pre-border);
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
       border-radius: 8px;
-      padding: 12px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      padding: 16px;
+      font-family: ui-monospace, 'Courier New', monospace;
       font-size: 0.95em;
-      color: var(--pre-text);
+      color: #1f2937;
+      line-height: 1.7;
+      margin: 12px 0;
+    }
+    body.dark-mode pre {
+      background: #2c2c2c;
+      border-color: #555;
+      color: #e0e0e0;
     }
     .consent {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 10px 0 4px;
+      gap: 10px;
+      margin: 16px 0 8px;
+    }
+    .consent input[type="checkbox"] {
+      transform: scale(1.2);
+      cursor: pointer;
+    }
+    .consent label {
+      margin-bottom: 0;
     }
     .note {
-      background: var(--bg-note);
-      border: 1px solid var(--border-note);
-      color: var(--text-note);
-      padding: 10px 12px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #7c2d12;
+      padding: 12px 16px;
       border-radius: 8px;
       font-size: 0.95em;
+      margin: 16px 0;
+    }
+    body.dark-mode .note {
+      background: #3a2e1a;
+      border-color: #6b5832;
+      color: #f5deb3;
     }
     .info-badge {
       display: inline-block;
-      background: var(--bg-badge);
-      color: var(--text-badge);
+      background: #e0f2fe;
+      color: #0369a1;
       padding: 4px 10px;
       border-radius: 4px;
       font-size: 0.9em;
       margin-top: 8px;
+      font-weight: 500;
     }
-    .sep { height: 1px; background: var(--border-light); margin: 18px 0; }
-
+    body.dark-mode .info-badge {
+      background: #0c4a6e;
+      color: #7dd3fc;
+    }
+    .sep {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 24px 0;
+    }
+    body.dark-mode .sep {
+      background: #444;
+    }
     footer {
-      margin-top: 40px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border-light);
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
       text-align: center;
       font-size: 0.9em;
-      color: var(--text-secondary);
+      color: #555;
     }
-
-
-
-
+    body.dark-mode footer {
+      border-top-color: #444;
+      color: #999;
+    }
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @media (max-width: 768px) {
+      .participant-grid,
+      .device-grid {
+        grid-template-columns: 1fr;
+      }
+      .container {
+        padding: 18px;
+      }
+      h1 {
+        font-size: 1.45em;
+      }
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
   <div class="container">
-    <!-- Dark Mode Toggle Button -->
-    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-      <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <path d="M12 18C8.68629 18 6 15.3137 6 12C6 8.68629 8.68629 6 12 6C15.3137 6 18 8.68629 18 12C18 15.3137 15.3137 18 12 18ZM12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16ZM11 1H13V4H11V1ZM11 20H13V23H11V20ZM3.51472 4.92893L4.92893 3.51472L7.05025 5.63604L5.63604 7.05025L3.51472 4.92893ZM16.9497 18.364L18.364 16.9497L20.4853 19.0711L19.0711 20.4853L16.9497 18.364ZM19.0711 3.51472L20.4853 4.92893L18.364 7.05025L16.9497 5.63604L19.0711 3.51472ZM5.63604 16.9497L7.05025 18.364L4.92893 20.4853L3.51472 19.0711L5.63604 16.9497ZM23 11V13H20V11H23ZM4 11V13H1V11H4Z"/>
-      </svg>
-      <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="display: none;">
-        <path d="M10 7C10 10.866 13.134 14 17 14C18.9584 14 20.729 13.1957 21.9995 11.8995C22 11.933 22 11.9665 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C12.0335 2 12.067 2 12.1005 2.00049C10.8043 3.27098 10 5.04157 10 7ZM4 12C4 16.4183 7.58172 20 12 20C15.0583 20 17.7158 18.2839 19.062 15.7621C18.3945 15.9187 17.7035 16 17 16C12.0294 16 8 11.9706 8 7C8 6.29648 8.08133 5.60547 8.2379 4.938C5.71611 6.28423 4 8.9417 4 12Z"/>
-      </svg>
-    </button>
+    <!-- Dark Mode Slider Switch -->
+    <div id="darkModeSwitchContainer">
+      <label class="switch">
+        <input type="checkbox" id="darkModeToggle" />
+        <span class="slider"></span>
+        <span class="switch-label" id="darkModeSwitchLabel">🌙 Dark Mode</span>
+      </label>
+    </div>
 
     <h1>Keystroke Sound Recorder</h1>
     <p class="muted">
-      This page records short audio snippets around each key press while you type a standardized paragraph.
+      This application records audio snippets around each keystroke while you type a standardized paragraph for research purposes.
     </p>
-
     <div class="note">
-      Grant microphone access when prompted. Keep your environment quiet to reduce background noise.
+      ⚠️ Grant microphone access when prompted. Keep your environment quiet to reduce background noise.
     </div>
 
     <h2>Device Information</h2>
-    <div class="grid">
+    <div class="device-grid">
       <div>
         <label for="deviceIdDisplay">Device ID</label>
         <input id="deviceIdDisplay" type="text" readonly disabled />
@@ -306,7 +435,7 @@
     </div>
 
     <h2>Participant Details</h2>
-    <div class="grid">
+    <div class="participant-grid">
       <div>
         <label for="pid">Participant ID</label>
         <input id="pid" type="text" readonly disabled />
@@ -314,7 +443,7 @@
       <div>
         <label for="session">Session Number</label>
         <input id="session" type="number" min="1" value="1" readonly disabled />
-        <span class="info-badge" id="sessionInfo">Auto-detected</span>
+        <span class="info-badge" id="sessionInfo">Session 1</span>
       </div>
       <div>
         <label for="person">Person</label>
@@ -322,6 +451,8 @@
           <option value="1">Person 1</option>
           <option value="2">Person 2</option>
           <option value="3">Person 3</option>
+          <option value="4">Person 4</option>
+          <option value="5">Person 5</option>
         </select>
       </div>
       <div>
@@ -344,77 +475,82 @@
         </select>
       </div>
     </div>
-
     <div class="consent">
       <input type="checkbox" id="consentChk" />
       <label for="consentChk">I consent to participate in this research recording.</label>
     </div>
 
     <div class="sep"></div>
-
     <h2>Paragraph to Type</h2>
     <p class="muted">Type the paragraph below exactly as shown.</p>
-
     <pre>The quick brown fox jumps over the lazy dog while amazing zebras quietly vex jumpy kids, proving every letter is present. Pack my box with five dozen liquor jugs to verify the alphabet twice.
 Digits appear forward and backward: 1234567890 then 0987654321, followed by sequences like 2468, 13579, and 314159.
 Now we add punctuation: . , ; : ? ! ' " - _ ( ) [ ] { } / \
-Symbols and operators: @ # $ % ^ & * + = &lt; &gt; | ~
+Symbols and operators: @ # $ % ^ & * + = < > | ~
 To include uppercase properly, acronyms like NASA, USA, UN, AI, ML, and HTML are written in full caps.
 Typing speed and accuracy will be measured across every key, ensuring consistency of captured events.
 Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes features [alpha], {bravo}, and (charlie), all typed carefully for complete coverage of the QWERTY keyboard.</pre>
 
-    <h2>Typing Box</h2>
-    <textarea id="inputArea" rows="8" placeholder="Start typing after clicking 'Start Recording'" disabled></textarea>
+    <div class="sep"></div>
+    <h2>Special Key Block</h2>
+    <p class="muted">After finishing the paragraph, press each key exactly once in this order.</p>
+    <pre>1) Tab
+2) Backspace
+3) Delete
+4) Arrow Up
+5) Arrow Down
+6) Arrow Left
+7) Arrow Right
+8) Esc
+9) F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12
+10) Caps Lock (press once to enable, once to disable)
+11) Enter (to confirm completion)</pre>
 
+    <div class="sep"></div>
+    <h2>Typing Box</h2>
+    <p class="muted">Click inside and start typing after clicking 'Start Recording'.</p>
+    <textarea id="inputArea" rows="8" placeholder="Start typing after clicking 'Start Recording'" disabled></textarea>
     <div class="button-row">
       <button class="btn" id="startBtn">Start Recording</button>
       <button class="btn" id="stopBtn" disabled>Stop Recording</button>
+      <button class="btn secondary" id="clearBtn">Clear Box</button>
     </div>
-
     <div class="status" id="status">Loading...</div>
     <div class="pressed-keys">
       <strong>Keys Pressed:</strong> <span id="keyList"></span>
     </div>
 
     <footer>
-      For Research Purpose
+      Developed by <strong>Vikrant Vikram</strong> | For Research Purposes
     </footer>
   </div>
 
   <script>
-    // Dark Mode Toggle Implementation
-    (function initTheme() {
-      const htmlElement = document.documentElement;
-      const themeToggle = document.getElementById('themeToggle');
-      const sunIcon = document.getElementById('sunIcon');
-      const moonIcon = document.getElementById('moonIcon');
-
-      // Check for saved theme preference or default to 'light'
-      const currentTheme = localStorage.getItem('theme') || 'light';
-      htmlElement.setAttribute('data-theme', currentTheme);
-      updateIcons(currentTheme);
-
-      function updateIcons(theme) {
-        if (theme === 'dark') {
-          sunIcon.style.display = 'none';
-          moonIcon.style.display = 'block';
-        } else {
-          sunIcon.style.display = 'block';
-          moonIcon.style.display = 'none';
-        }
+    // ==================== DARK MODE TOGGLE ====================
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const switchLabel = document.getElementById('darkModeSwitchLabel');
+    
+    if (localStorage.getItem('darkModeEnabled') === 'true') {
+      document.body.classList.add('dark-mode');
+      darkModeToggle.checked = true;
+      switchLabel.textContent = '☀️ Light Mode';
+    } else {
+      switchLabel.textContent = '🌙 Dark Mode';
+    }
+    
+    darkModeToggle.addEventListener('change', () => {
+      if (darkModeToggle.checked) {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('darkModeEnabled', 'true');
+        switchLabel.textContent = '☀️ Light Mode';
+      } else {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('darkModeEnabled', 'false');
+        switchLabel.textContent = '🌙 Dark Mode';
       }
+    });
 
-      themeToggle.addEventListener('click', function() {
-        const currentTheme = htmlElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        
-        htmlElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        updateIcons(newTheme);
-      });
-    })();
-
-    // Device Detection
+    // ==================== DEVICE DETECTION ====================
     function detectBrowser() {
       const userAgent = navigator.userAgent;
       const browsers = [
@@ -428,7 +564,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         const match = userAgent.match(regex);
         return match ? match[1] : 'Unknown';
       };
-
+      
       const detectOS = () => {
         if (/Win/.test(userAgent)) return { name: 'Windows', version: (userAgent.match(/Windows NT ([0-9.]+)/) || [])[1] || 'Unknown' };
         if (/Mac/.test(userAgent)) return { name: 'MacOS', version: (userAgent.match(/Mac OS X ([0-9._]+)/) || [])[1]?.replace(/_/g, '.') || 'Unknown' };
@@ -488,6 +624,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       return Math.abs(hash).toString(36);
     }
 
+    // ==================== GLOBAL VARIABLES ====================
     const browserInfo = detectBrowser();
     const API_BASE = '/api';
     let currentDeviceId = null;
@@ -507,16 +644,18 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     const PRE_MS = 60;
     const POST_MS = 200;
 
-    let statusEl, keyListEl, inputArea, startBtn, stopBtn, consentChk;
+    let statusEl, keyListEl, inputArea, startBtn, stopBtn, consentChk, clearBtn;
     let pidEl, sessionEl, genderEl, handEl, personEl;
     let deviceIdDisplay, osDisplay, browserDisplay, deviceTypeDisplay, sessionInfo;
 
+    // ==================== INITIALIZATION ====================
     document.addEventListener('DOMContentLoaded', async () => {
       statusEl = document.getElementById('status');
       keyListEl = document.getElementById('keyList');
       inputArea = document.getElementById('inputArea');
       startBtn = document.getElementById('startBtn');
       stopBtn = document.getElementById('stopBtn');
+      clearBtn = document.getElementById('clearBtn');
       consentChk = document.getElementById('consentChk');
       pidEl = document.getElementById('pid');
       sessionEl = document.getElementById('session');
@@ -539,9 +678,11 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
 
       startBtn.addEventListener('click', handleStart);
       stopBtn.addEventListener('click', handleStop);
+      clearBtn.addEventListener('click', handleClear);
       inputArea.addEventListener('keydown', handleKeydown);
     });
 
+    // ==================== DEVICE REGISTRATION ====================
     async function registerDevice() {
       const fingerprint = generateDeviceFingerprint();
       
@@ -579,10 +720,11 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       } catch (err) {
         console.error('Device registration error:', err);
         statusEl.innerText = `Registration failed: ${err.message}. Check console (F12).`;
-        alert('Device registration failed. Please check:\n1. Environment variables in Vercel\n2. Service account permissions\n3. Console (F12) for errors');
+        alert('Device registration failed. Please check console (F12) for errors.');
       }
     }
 
+    // ==================== PARTICIPANT ID GENERATION ====================
     async function getNextParticipantId() {
       if (!currentDeviceId) {
         console.error('Cannot get participant ID: no device ID');
@@ -628,6 +770,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       }
     }
 
+    // ==================== TYPING SPEED CALCULATION ====================
     function calculateTypingSpeed() {
       if (!typingStartTime || totalCharactersTyped === 0) return { wpm: 0, category: 'Beginner' };
       
@@ -642,6 +785,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       return { wpm, category };
     }
 
+    // ==================== MICROPHONE INITIALIZATION ====================
     async function initMic() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -652,10 +796,12 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       }
     }
 
+    // ==================== VALIDATION ====================
     function allMetaProvided() {
       return consentChk.checked && genderEl.value && handEl.value && currentParticipantId;
     }
 
+    // ==================== EVENT HANDLERS ====================
     async function handleStart() {
       if (!currentParticipantId) {
         alert('Please wait for participant ID to load');
@@ -727,6 +873,13 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       statusEl.innerText = 'Stopping and processing...';
     }
 
+    function handleClear() {
+      inputArea.value = '';
+      keyListEl.textContent = '';
+      keyEvents.length = 0;
+      totalCharactersTyped = 0;
+    }
+
     function handleKeydown(event) {
       if (!recordingEnabled) return;
       if (['Shift','Control','Alt','Meta'].includes(event.key)) return;
@@ -740,6 +893,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       keyListEl.textContent = keyEvents.map(k=>k.key).slice(-30).join(', ');
     }
 
+    // ==================== WAV ENCODING ====================
     function writeString(view, offset, string) {
       for (let i = 0; i < string.length; i++) {
         view.setUint8(offset + i, string.charCodeAt(i));
@@ -785,6 +939,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       return new Blob([view], { type: 'audio/wav' });
     }
 
+    // ==================== UPLOAD TO GOOGLE DRIVE ====================
     async function uploadToGoogleDrive(zipBlob, metadata) {
       try {
         statusEl.innerText = 'Uploading to Google Drive...';
@@ -802,7 +957,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         const typingSpeed = calculateTypingSpeed();
         console.log('Typing speed:', typingSpeed);
         
-        const zipFileName = `${currentParticipantId}_S${currentSessionNumber}_${genderEl.value}_${handEl.value}.zip`;
+        const zipFileName = `${currentParticipantId}_S${currentSessionNumber}_P${personEl.value}_${genderEl.value}_${handEl.value}.zip`;
         console.log('Uploading file:', zipFileName);
         
         const uploadResponse = await fetch(`${API_BASE}/upload-to-drive`, {
@@ -861,9 +1016,8 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | File uploaded successfully`;
         inputArea.value = '';
         
-        setTimeout(() => {
-          alert(`Recording complete!\n\nParticipant: ${currentParticipantId}\nSession: ${currentSessionNumber}\nTyping Speed: ${typingSpeed.wpm} WPM (${typingSpeed.category})\n\nFile uploaded to Google Drive!`);
-        }, 500);
+        // Show forms after successful upload
+        showFormsPrompt(typingSpeed);
         
       } catch (err) {
         console.error('Upload process error:', err);
@@ -871,6 +1025,63 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       }
     }
 
+    // ==================== SHOW FORMS PROMPT ====================
+    function showFormsPrompt(typingSpeed) {
+      const existingPrompt = document.getElementById('formsPrompt');
+      if (existingPrompt) existingPrompt.remove();
+      
+      const formsHTML = `
+        <div id="formsPrompt" style="margin-top: 24px; padding: 24px; background: #f0f9ff; border: 2px solid #0369a1; border-radius: 12px; animation: slideIn 0.3s ease-out;">
+          <h3 style="margin-top: 0; color: #0369a1; font-size: 1.4em;">🎉 Recording Complete!</h3>
+          <div style="background: white; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 4px 0;"><strong>Participant ID:</strong> ${currentParticipantId}</p>
+            <p style="margin: 4px 0;"><strong>Session:</strong> ${currentSessionNumber}</p>
+            <p style="margin: 4px 0;"><strong>Person:</strong> ${personEl.value}</p>
+            <p style="margin: 4px 0;"><strong>Typing Speed:</strong> ${typingSpeed.wpm} WPM (${typingSpeed.category})</p>
+            <p style="margin: 4px 0;"><strong>Keys Recorded:</strong> ${keyEvents.length}</p>
+          </div>
+          <p style="margin-top: 20px; font-weight: 600; font-size: 1.1em; color: #0c4a6e;">📋 Please complete these research forms:</p>
+          <p style="margin-bottom: 16px; color: #555; font-size: 0.95em;">Your feedback is valuable for our research. Each form takes about 2-3 minutes.</p>
+          <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSewQ-ZdYvG7QtxooKVKzcr12ag4PylnmRQR5kZo5qRzbIycfQ/viewform" 
+               target="_blank" 
+               class="form-link-btn"
+               style="flex: 1; min-width: 200px; display: inline-block; padding: 14px 20px; background: #4a90e2; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; text-align: center; transition: all 0.2s;">
+              📝 Form 1: Background Information
+            </a>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSc_zpIaQNj3zUEvylUjD4bvMnSiGveKSTtRV7uaBceEr97hyA/viewform" 
+               target="_blank" 
+               class="form-link-btn"
+               style="flex: 1; min-width: 200px; display: inline-block; padding: 14px 20px; background: #4a90e2; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; text-align: center; transition: all 0.2s;">
+              📝 Form 2: User Feedback
+            </a>
+          </div>
+          <p style="margin-top: 16px; font-size: 0.9em; color: #666; text-align: center;">✓ Forms will open in new tabs</p>
+        </div>
+      `;
+      
+      const pressedKeysDiv = document.querySelector('.pressed-keys');
+      pressedKeysDiv.insertAdjacentHTML('afterend', formsHTML);
+      
+      document.querySelectorAll('.form-link-btn').forEach(btn => {
+        btn.addEventListener('mouseenter', (e) => {
+          e.target.style.background = '#357ab8';
+          e.target.style.transform = 'translateY(-2px)';
+          e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        });
+        btn.addEventListener('mouseleave', (e) => {
+          e.target.style.background = '#4a90e2';
+          e.target.style.transform = 'translateY(0)';
+          e.target.style.boxShadow = 'none';
+        });
+      });
+      
+      setTimeout(() => {
+        document.getElementById('formsPrompt').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+
+    // ==================== PROCESS RECORDING & CREATE ZIP ====================
     async function processRecordingAndCreateZip() {
       try {
         if (recordedChunks.length === 0) {
@@ -949,7 +1160,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
 
         await uploadToGoogleDrive(zipBlob, sessionMetadata);
 
-        const zipFilename = `${currentParticipantId}_S${currentSessionNumber}_${genderEl.value}_${handEl.value}.zip`;
+        const zipFilename = `${currentParticipantId}_S${currentSessionNumber}_P${personEl.value}_${genderEl.value}_${handEl.value}.zip`;
         triggerDownload(zipBlob, zipFilename);
       } catch (err) {
         console.error('Processing error:', err);
@@ -958,6 +1169,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       }
     }
 
+    // ==================== TRIGGER DOWNLOAD ====================
     function triggerDownload(blob, filename) {
       const a = document.createElement('a');
       const url = URL.createObjectURL(blob);
