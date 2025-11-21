@@ -18,10 +18,7 @@
       color: #222;
       transition: background 0.3s, color 0.3s;
     }
-    body.dark-mode {
-      background: #121212;
-      color: #eee;
-    }
+    body.dark-mode { background: #121212; color: #eee; }
     .container {
       background: #fff;
       padding: 32px;
@@ -33,7 +30,7 @@
     body.dark-mode .container {
       background: #1e1e1e;
       color: #eee;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 4px 20px rgba(0,0,0,.7);
     }
 
     /* Dark Mode Slider Switch */
@@ -42,179 +39,42 @@
       justify-content: flex-end;
       margin-bottom: 16px;
     }
-    .switch {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      font-weight: 600;
-      user-select: none;
-    }
-    .switch input[type="checkbox"] {
-      opacity: 0;
-      width: 0;
-      height: 0;
-      position: absolute;
-    }
-    .slider {
-      position: relative;
-      display: inline-block;
-      width: 46px;
-      height: 26px;
-      background: #ccc;
-      border-radius: 99px;
-      transition: background 0.3s;
-      vertical-align: middle;
-    }
-    .slider:before {
-      content: "";
-      position: absolute;
-      height: 20px;
-      width: 20px;
-      left: 3px;
-      top: 3px;
-      background: #fff;
-      border-radius: 50%;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-      transition: transform 0.3s, background 0.3s;
-    }
-    .switch input:checked + .slider {
-      background: #4a90e2;
-    }
-    .switch input:checked + .slider:before {
-      transform: translateX(20px);
-      background: #fffde4;
-    }
-    .switch-label {
-      display: inline-block;
-      margin-left: 12px;
-      font-size: 1em;
-      color: #333;
-      transition: color 0.3s;
-    }
-    body.dark-mode .switch-label {
-      color: #f9fafb;
-    }
-    body.dark-mode .slider {
-      background: #374151;
-    }
-    body.dark-mode .switch input:checked + .slider {
-      background: #ffd600;
-    }
+    .switch { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; user-select: none; }
+    .switch input[type="checkbox"] { opacity: 0; width: 0; height: 0; position: absolute; }
+    .slider { position: relative; display: inline-block; width: 46px; height: 26px; background: #ccc; border-radius: 99px; transition: background 0.3s; vertical-align: middle; }
+    .slider:before { content: ""; position: absolute; height: 20px; width: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: transform 0.3s, background 0.3s; }
+    .switch input:checked + .slider { background: #4a90e2; }
+    .switch input:checked + .slider:before { transform: translateX(20px); background: #fffde4; }
+    .switch-label { display: inline-block; margin-left: 12px; font-size: 1em; color: #333; transition: color 0.3s; }
+    body.dark-mode .switch-label { color: #f9fafb; }
+    body.dark-mode .slider { background: #374151; }
+    body.dark-mode .switch input:checked + .slider { background: #ffd600; }
 
-    h1 {
-      font-size: 2em;
-      margin: 0 0 10px 0;
-      font-weight: 600;
-      color: #333;
-    }
-    body.dark-mode h1 {
-      color: #eee;
-    }
-    h2 {
-      margin: 32px 0 16px;
-      font-size: 1.3em;
-      color: #333;
-      font-weight: 600;
-    }
-    body.dark-mode h2 {
-      color: #eee;
-    }
-    p {
-      font-size: 0.98em;
-      color: #555;
-      margin: 0 0 14px 0;
-      line-height: 1.6;
-    }
-    body.dark-mode p {
-      color: #ccc;
-    }
+    h1 { font-size: 2em; margin: 0 0 10px 0; font-weight: 600; color: #333; }
+    body.dark-mode h1 { color: #eee; }
+    h2 { margin: 32px 0 16px; font-size: 1.3em; color: #333; font-weight: 600;}
+    body.dark-mode h2 { color: #eee;}
+    p { font-size: 0.98em; color: #555; margin: 0 0 14px 0; line-height: 1.6; }
+    body.dark-mode p { color: #ccc; }
 
-    .device-grid,
-    .participant-grid {
-      display: grid;
-      gap: 16px;
-      margin-top: 10px;
-      margin-bottom: 10px;
+    .device-grid, .participant-grid {
+      display: grid; gap: 16px; margin-top: 10px; margin-bottom: 10px;
     }
-    .device-grid {
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-    .participant-grid {
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    }
-
-    label {
-      font-size: 0.92em;
-      color: #333;
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 500;
-    }
-    body.dark-mode label {
-      color: #ddd;
-    }
-    input[type="text"],
-    input[type="number"],
-    select {
-      width: 100%;
-      padding: 10px 12px;
-      font-size: 1em;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      background: #fff;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-      transition: border-color 0.2s;
-    }
-    input:disabled,
-    select:disabled {
-      background: #f0f0f0;
-      color: #666;
-      cursor: not-allowed;
-    }
-    input:focus,
-    select:focus,
-    textarea:focus {
-      outline: none;
-      border-color: #4a90e2;
-    }
-    body.dark-mode input,
-    body.dark-mode select,
-    body.dark-mode textarea {
-      background: #2c2c2c;
-      color: #eee;
-      border-color: #555;
-    }
-    body.dark-mode input:disabled,
-    body.dark-mode select:disabled {
-      background: #444;
-      color: #aaa;
-    }
-    textarea {
-      width: 100%;
-      padding: 14px;
-      font-size: 1.05em;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      resize: vertical;
-      min-height: 160px;
-      background: #fff;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
-      transition: border-color 0.2s;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    textarea:disabled {
-      background: #f0f0f0;
-      color: #666;
-    }
-    body.dark-mode textarea {
-      background: #2c2c2c;
-      color: #eee;
-    }
-    body.dark-mode textarea:disabled {
-      background: #444;
-      color: #aaa;
-    }
+    .device-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .participant-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    label { font-size: 0.92em; color: #333; display: block; margin-bottom: 6px; font-weight: 500;}
+    body.dark-mode label { color: #ddd; }
+    input, select { width: 100%; padding: 10px 12px; font-size: 1em; border: 2px solid #ddd; border-radius: 8px; background: #fff;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); transition: border-color 0.2s; }
+    input:disabled, select:disabled { background: #f0f0f0; color: #666; cursor: not-allowed;}
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #4a90e2; }
+    body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background: #2c2c2c; color: #eee; border-color: #555; }
+    body.dark-mode input:disabled, body.dark-mode select:disabled { background: #444; color: #aaa; }
+    textarea { width: 100%; padding: 14px; font-size: 1.05em; border: 2px solid #ddd; border-radius: 8px; resize: vertical; min-height: 160px; background: #fff;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.06); transition: border-color 0.2s; font-family: 'Segoe UI', sans-serif;}
+    textarea:disabled { background: #f0f0f0; color: #666;}
+    body.dark-mode textarea { background: #2c2c2c; color: #eee;}
+    body.dark-mode textarea:disabled { background: #444; color: #aaa;}
 
     .btn {
       background-color: #4a90e2;
@@ -227,180 +87,128 @@
       transition: background-color 0.2s, transform 0.1s;
       font-weight: 600;
     }
-    .btn:hover {
-      background-color: #357ab8;
-      transform: translateY(-1px);
-    }
-    .btn:active {
-      transform: translateY(0);
-    }
-    .btn:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-      transform: none;
-    }
-    .btn.secondary {
-      background-color: #6b7280;
-    }
-    .btn.secondary:hover {
-      background-color: #4b5563;
-    }
-    .button-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 16px;
-      align-items: center;
-    }
-    body.dark-mode .btn {
-      background-color: #357ab8;
-    }
-    body.dark-mode .btn:hover {
-      background-color: #2563eb;
-    }
-    body.dark-mode .btn.secondary {
-      background: #4b5563;
-    }
-    body.dark-mode .btn.secondary:hover {
-      background: #374151;
-    }
+    .btn:hover { background-color: #357ab8; transform: translateY(-1px);}
+    .btn:active { transform: translateY(0);}
+    .btn:disabled { background-color: #ccc; cursor: not-allowed; transform: none;}
+    .btn.secondary { background-color: #6b7280;}
+    .btn.secondary:hover { background-color: #4b5563;}
+    .button-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; align-items: center; }
+    body.dark-mode .btn { background-color: #357ab8;}
+    body.dark-mode .btn:hover { background-color: #2563eb; }
+    body.dark-mode .btn.secondary { background: #4b5563;}
+    body.dark-mode .btn.secondary:hover { background: #374151; }
 
-    .muted {
-      color: #666;
-      font-size: 0.9em;
+    .muted { color: #666; font-size: 0.9em;}
+    body.dark-mode .muted { color: #999; }
+
+    .status { margin-top: 16px; font-size: 1em; color: #444; min-height: 24px; font-weight: 500;}
+    body.dark-mode .status { color: #ddd;}
+    .pressed-keys { margin-top: 12px; font-size: 0.95em; color: #222; word-wrap: break-word;}
+    body.dark-mode .pressed-keys { color: #ddd;}
+    pre { white-space: pre-wrap; word-break: break-word; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; font-family: ui-monospace, 'Courier New', monospace; font-size: 0.95em; color: #1f2937; line-height: 1.7; margin: 12px 0;}
+    body.dark-mode pre { background: #2c2c2c; border-color: #555; color: #e0e0e0; }
+    .consent { display: flex; align-items: center; gap: 10px; margin: 16px 0 8px;}
+    .consent input[type="checkbox"] { transform: scale(1.2); cursor: pointer;}
+    .note { background: #fff7ed; border: 1px solid #fed7aa; color: #7c2d12; padding: 12px 16px; border-radius: 8px; font-size: 0.95em; margin: 16px 0;}
+    body.dark-mode .note { background: #3a2e1a; border-color: #6b5832; color: #f5deb3;}
+    .info-badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 4px; font-size: 0.9em; margin-top: 8px; font-weight: 500;}
+    body.dark-mode .info-badge { background: #0c4a6e; color: #7dd3fc; }
+    .sep { height: 1px; background: #e5e7eb; margin: 24px 0;}
+    body.dark-mode .sep { background: #444;}
+    footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 0.9em; color: #555;}
+    body.dark-mode footer { border-top-color: #444; color: #999;}
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-20px);} to { opacity: 1; transform: translateY(0);} }
+    @media (max-width: 768px) {
+      .participant-grid, .device-grid { grid-template-columns: 1fr;}
+      .container { padding: 18px;}
+      h1 { font-size: 1.45em; }
     }
-    body.dark-mode .muted {
-      color: #999;
-    }
-    .status {
-      margin-top: 16px;
-      font-size: 1em;
-      color: #444;
-      min-height: 24px;
-      font-weight: 500;
-    }
-    body.dark-mode .status {
-      color: #ddd;
-    }
-    .pressed-keys {
-      margin-top: 12px;
-      font-size: 0.95em;
-      color: #222;
-      word-wrap: break-word;
-    }
-    body.dark-mode .pressed-keys {
-      color: #ddd;
-    }
-    pre {
+    /* Tab (slider) styling */
+    .tab-container { display: flex; justify-content: flex-start; gap: 8px; margin-bottom: 10px;}
+    .tab-btn { padding: 8px 16px; border: none; font-size: 1em; background: #e0e7ef; color: #1a2936; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; transition: background 0.2s;}
+    .tab-btn.active, .tab-btn:focus { background: #4a90e2; color: #fff; outline: none;}
+    body.dark-mode .tab-btn { background: #374151; color: #cbd5e1; }
+    body.dark-mode .tab-btn.active { background: #60a5fa; color: #22223b;}
+    .tab-content { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 0 0 10px 10px; border-top: none; padding: 12px 16px; margin-bottom: 12px;}
+    body.dark-mode .tab-content { background: #2c2c2c; border-color: #555; color: #e0e0e0;}
+    /* Person dropdown styling */
+    select option:disabled { color: #999 !important; font-style: italic; background: #f5f5f5;}
+    body.dark-mode select option:disabled { color: #666 !important; background: #2a2a2a;}
+
+    /* Fix pre tag inside tab content - remove default styling */
+    .tab-content pre {
       white-space: pre-wrap;
       word-break: break-word;
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 16px;
+      background: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
       font-family: ui-monospace, 'Courier New', monospace;
       font-size: 0.95em;
-      color: #1f2937;
+      color: inherit;
       line-height: 1.7;
-      margin: 12px 0;
     }
-    body.dark-mode pre {
+
+    body.dark-mode .tab-content pre {
+      background: none !important;
+      border: none !important;
+      color: inherit;
+    }
+
+    /* Ensure tab content doesn't have conflicting styles */
+    .tab-content {
+      background: #f8fafc;
+      border-radius: 0 0 8px 8px;
+      padding: 16px 14px;
+      margin-bottom: 0;
+      margin-top: 0;
+      border: 1px solid #e5e7eb;
+      border-top: none;
+    }
+
+    body.dark-mode .tab-content {
       background: #2c2c2c;
-      border-color: #555;
       color: #e0e0e0;
+      border-color: #555;
     }
+
     .consent {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin: 16px 0 8px;
+      margin: 16px 0 20px 0;
+      padding: 0;
     }
+
     .consent input[type="checkbox"] {
-      transform: scale(1.2);
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      margin: 0;
       cursor: pointer;
+      accent-color: #4a90e2;
     }
+
     .consent label {
-      margin-bottom: 0;
-    }
-    .note {
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
-      color: #7c2d12;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 0.95em;
-      margin: 16px 0;
-    }
-    body.dark-mode .note {
-      background: #3a2e1a;
-      border-color: #6b5832;
-      color: #f5deb3;
-    }
-    .info-badge {
-      display: inline-block;
-      background: #e0f2fe;
-      color: #0369a1;
-      padding: 4px 10px;
-      border-radius: 4px;
-      font-size: 0.9em;
-      margin-top: 8px;
+      margin: 0;
+      padding: 0;
+      font-size: 1em;
+      color: #333;
       font-weight: 500;
-    }
-    body.dark-mode .info-badge {
-      background: #0c4a6e;
-      color: #7dd3fc;
-    }
-    .sep {
-      height: 1px;
-      background: #e5e7eb;
-      margin: 24px 0;
-    }
-    body.dark-mode .sep {
-      background: #444;
-    }
-    footer {
-      margin-top: 48px;
-      padding-top: 16px;
-      border-top: 1px solid #e5e7eb;
-      text-align: center;
-      font-size: 0.9em;
-      color: #555;
-    }
-    body.dark-mode footer {
-      border-top-color: #444;
-      color: #999;
-    }
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    @media (max-width: 768px) {
-      .participant-grid,
-      .device-grid {
-        grid-template-columns: 1fr;
-      }
-      .container {
-        padding: 18px;
-      }
-      h1 {
-        font-size: 1.45em;
-      }
+      cursor: pointer;
+      line-height: 1.4;
     }
 
-  select option:disabled {
-    color: #999;
-    font-style: italic;
-  }
+    body.dark-mode .consent label {
+      color: #eee;
+    }
 
-  body.dark-mode select option:disabled {
-    color: #666;
-  }
+    body.dark-mode .consent input[type="checkbox"] {
+      accent-color: #60a5fa;
+    }
+
 
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -491,32 +299,40 @@
     </div>
 
     <div class="sep"></div>
-    <h2>Paragraph to Type</h2>
-    <p class="muted">Type the paragraph below exactly as shown.</p>
-    <pre>The quick brown fox jumps over the lazy dog while amazing zebras quietly vex jumpy kids, proving every letter is present. Pack my box with five dozen liquor jugs to verify the alphabet twice.
-Digits appear forward and backward: 1234567890 then 0987654321, followed by sequences like 2468, 13579, and 314159.
-Now we add punctuation: . , ; : ? ! ' " - _ ( ) [ ] { } / \
-Symbols and operators: @ # $ % ^ & * + = < > | ~
-To include uppercase properly, acronyms like NASA, USA, UN, AI, ML, and HTML are written in full caps.
-Typing speed and accuracy will be measured across every key, ensuring consistency of captured events.
-Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes features [alpha], {bravo}, and (charlie), all typed carefully for complete coverage of the QWERTY keyboard.</pre>
+    <!-- Tab/Slider for paragraph or special keys -->
+    <div class="tab-container">
+      <button class="tab-btn active" id="tab-paragraph" type="button">Paragraph to Type</button>
+      <button class="tab-btn" id="tab-special" type="button">Special Key Block</button>
+    </div>
 
-    <div class="sep"></div>
-    <h2>Special Key Block</h2>
-    <p class="muted">After finishing the paragraph, press each key exactly once in this order.</p>
-    <pre>1) Tab
-2) Backspace
-3) Delete
-4) Arrow Up
-5) Arrow Down
-6) Arrow Left
-7) Arrow Right
-8) Esc
-9) F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12
-10) Caps Lock (press once to enable, once to disable)
-11) Enter (to confirm completion)</pre>
+    <div class="tab-content" id="tabParagraphContent">
+      <pre id="paragraphText">
+    The quick brown fox jumps over the lazy dog while amazing zebras quietly vex jumpy kids, proving every letter is present. Pack my box with five dozen liquor jugs to verify the alphabet twice.
+    Digits appear forward and backward: 1234567890 then 0987654321, followed by sequences like 2468, 13579, and 314159.
+    Now we add punctuation: . , ; : ? ! ' " - _ ( ) [ ] { } / \
+    Symbols and operators: @ # $ % ^ & * + = < > | ~
+    To include uppercase properly, acronyms like NASA, USA, UN, AI, ML, and HTML are written in full caps.
+    Typing speed and accuracy will be measured across every key, ensuring consistency of captured events.
+    Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes features [alpha], {bravo}, and (charlie), all typed carefully for complete coverage of the QWERTY keyboard.
+      </pre>
+    </div>
+    <div class="tab-content" id="tabSpecialContent" style="display:none">
+      <pre>
+    1) Tab
+    2) Backspace
+    3) Delete
+    4) Arrow Up
+    5) Arrow Down
+    6) Arrow Left
+    7) Arrow Right
+    8) Esc
+    9) F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12
+    10) Caps Lock (press once to enable, once to disable)
+    11) Enter (to confirm completion)
+      </pre>
+    </div>
+    <!-- Now the typing box and start/stop buttons go below as before -->
 
-    <div class="sep"></div>
     <h2>Typing Box</h2>
     <p class="muted">Click inside and start typing after clicking 'Start Recording'.</p>
     <textarea id="inputArea" rows="8" placeholder="Start typing after clicking 'Start Recording'" disabled></textarea>
@@ -559,6 +375,24 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         switchLabel.textContent = '🌙 Dark Mode';
       }
     });
+
+    const tabParagraph = document.getElementById('tab-paragraph');
+    const tabSpecial = document.getElementById('tab-special');
+    const tabParagraphContent = document.getElementById('tabParagraphContent');
+    const tabSpecialContent = document.getElementById('tabSpecialContent');
+
+    tabParagraph.addEventListener('click', () => {
+      tabParagraph.classList.add('active');
+      tabSpecial.classList.remove('active');
+      tabParagraphContent.style.display = '';
+      tabSpecialContent.style.display = 'none';
+      });
+    tabSpecial.addEventListener('click', () => {
+      tabSpecial.classList.add('active');
+      tabParagraph.classList.remove('active');
+      tabSpecialContent.style.display = '';
+      tabParagraphContent.style.display = 'none';
+      });
 
     // ==================== DEVICE DETECTION ====================
     function detectBrowser() {
