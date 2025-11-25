@@ -70,9 +70,24 @@
     input:focus, select:focus, textarea:focus { outline: none; border-color: #4a90e2; }
     body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background: #2c2c2c; color: #eee; border-color: #555; }
     body.dark-mode input:disabled, body.dark-mode select:disabled { background: #444; color: #aaa; }
-    textarea { width: 100%; padding: 14px; font-size: 1.05em; border: 2px solid #ddd; border-radius: 8px; resize: vertical; min-height: 160px; background: #fff;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.06); transition: border-color 0.2s; font-family: 'Segoe UI', sans-serif;}
-    textarea:disabled { background: #f0f0f0; color: #666;}
+    textarea {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.05em;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      resize: vertical;
+      min-height: 160px;
+      background: #ffffff !important;  /* Force white background in light mode */
+      color: #000000 !important;       /* Force black text in light mode */
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+      transition: border-color 0.2s;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    textarea:disabled {
+      background: #f9fafb !important;
+
     body.dark-mode textarea { background: #2c2c2c; color: #eee;}
     body.dark-mode textarea:disabled { background: #444; color: #aaa;}
 
