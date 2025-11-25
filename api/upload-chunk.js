@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { Readable } from 'stream';
 
 export const config = {
   api: {
@@ -70,6 +71,15 @@ export default async function handler(req, res) {
       const fullBase64 = global.uploadSessions[sessionId].chunks.join('');
       console.log(`[${sessionId}] Combined file size: ${(fullBase64.length / 1024 / 1024).toFixed(2)} MB`);
       
+      // Convert base64 to buffer
+      const buffer = Buffer.from(fullBase64, 'base64');
+      console.log(`[${sessionId}] Buffer created, size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
+      
+      // Create a readable stream from buffer (CRITICAL FIX)
+      const bufferStream = new Readable();
+      bufferStream.push(buffer);
+      bufferStream.push(null); // Signal end of stream
+      
       // Initialize Google Drive
       const auth = new google.auth.GoogleAuth({
         credentials: {
@@ -81,7 +91,7 @@ export default async function handler(req, res) {
 
       const drive = google.drive({ version: 'v3', auth });
 
-      // Upload to Google Drive
+      // Upload to Google Drive with stream
       const fileMetadata = {
         name: fileName,
         parents: [process.env.GOOGLE_DRIVE_FOLDER_ID],
@@ -89,7 +99,7 @@ export default async function handler(req, res) {
 
       const media = {
         mimeType: 'application/zip',
-        body: Buffer.from(fullBase64, 'base64'),
+        body: bufferStream, // Use stream instead of buffer
       };
 
       console.log(`[${sessionId}] Uploading to Google Drive...`);
@@ -123,6 +133,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Chunk upload error:', error);
     console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
     return res.status(500).json({
       success: false,
       error: error.message || 'Upload failed',
