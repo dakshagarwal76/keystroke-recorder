@@ -72,24 +72,57 @@
     body.dark-mode input:disabled, body.dark-mode select:disabled { background: #444; color: #aaa; }
     textarea {
       width: 100%;
-      padding: 14px;
-      font-size: 1.05em;
-      border: 2px solid #ddd;
+      padding: 16px;
+      font-size: 1rem;
+      line-height: 1.6;
+      border: 2px solid var(--border-color);
       border-radius: 8px;
       resize: vertical;
-      min-height: 160px;
-      background: #ffffff !important;  /* Force white background in light mode */
-      color: #000000 !important;       /* Force black text in light mode */
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
-      transition: border-color 0.2s;
-      font-family: 'Segoe UI', sans-serif;
+      min-height: 180px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
     }
 
     textarea:disabled {
-      background: #f9fafb !important;
+      background: var(--input-disabled);
+      color: var(--text-muted);
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    textarea::placeholder {
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
 
     body.dark-mode textarea { background: #2c2c2c; color: #eee;}
     body.dark-mode textarea:disabled { background: #444; color: #aaa;}
+
+    pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+
 
     .btn {
       background-color: #4a90e2;
@@ -150,27 +183,36 @@
     select option:disabled { color: #999 !important; font-style: italic; background: #f5f5f5;}
     body.dark-mode select option:disabled { color: #666 !important; background: #2a2a2a;}
 
-    /* Fix pre tag inside tab content - remove default styling */
-    .tab-content pre {
-      white-space: pre-wrap;
-      word-break: break-word;
-      background: none !important;
-      border: none !important;
-      border-radius: 0 !important;
-      padding: 0 !important;
-      margin: 0 !important;
+    /* FIXED: Force pre tag text to be visible */
+    .tab-content pre,
+    #tabParagraphContent pre,
+    #tabSpecialContent pre {
+      white-space: pre-wrap !important;
+      word-break: break-word !important;
+      background: #f8f9fa !important;
+      border: 1px solid #dee2e6 !important;
+      border-radius: 8px !important;
+      padding: 16px !important;
+      margin: 12px 0 !important;
       box-shadow: none !important;
-      font-family: ui-monospace, 'Courier New', monospace;
-      font-size: 0.95em;
-      color: inherit;
-      line-height: 1.7;
+      font-family: 'Courier New', Consolas, monospace !important;
+      font-size: 14px !important;
+      color: #000000 !important;
+      line-height: 1.8 !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
     }
 
-    body.dark-mode .tab-content pre {
-      background: none !important;
-      border: none !important;
-      color: inherit;
+    body.dark-mode .tab-content pre,
+    body.dark-mode #tabParagraphContent pre,
+    body.dark-mode #tabSpecialContent pre {
+      background: #2d3748 !important;
+      border-color: #4a5568 !important;
+      color: #ffffff !important;
     }
+
+
 
     /* Ensure tab content doesn't have conflicting styles */
     .tab-content {
@@ -251,12 +293,6 @@
       color: var(--accent-primary);
       border-bottom-color: var(--accent-primary);
     }
-    .tab-content {
-      display: none;
-    }
-    .tab-content.active {
-      display: block;
-    }
     .instruction-box {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
@@ -285,7 +321,28 @@
 
 
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js">// Force first tab visible immediately
+window.addEventListener('load', function() {
+  const tabPara = document.getElementById('tabParagraphContent');
+  const tabSpecial = document.getElementById('tabSpecialContent');
+  const btnPara = document.getElementById('tab-paragraph');
+  const btnSpecial = document.getElementById('tab-special');
+  
+  // Make sure paragraph tab is active
+  if (tabPara) {
+    tabPara.classList.add('active');
+    tabPara.style.display = 'block';
+  }
+  if (tabSpecial) {
+    tabSpecial.classList.remove('active');
+    tabSpecial.style.display = 'none';
+  }
+  if (btnPara) btnPara.classList.add('active');
+  if (btnSpecial) btnSpecial.classList.remove('active');
+  
+  console.log('✅ Tabs initialized');
+});
+</script>
 </head>
 <body>
   <div class="container">
@@ -379,8 +436,8 @@
         <li><strong>Step 1:</strong> Click "Start Recording" button below</li>
         <li><strong>Step 2:</strong> Type the complete <strong>"Paragraph to Type"</strong> exactly as shown</li>
         <li><strong>Step 3:</strong> Switch to <strong>"Special Key Block"</strong> tab and type that text</li>
-        <li><strong>Step 4:</strong> Click "Stop Recording" when finished</li>
-        <li><strong>Important:</strong> Both forms (Paragraph + Special Keys) are mandatory!</li>
+        <li><strong>Step 4:</strong> Click "Stop Recording" when finished with both the tabs</li>
+        <li><strong>Important:</strong> Both forms which appear after submission are mandatory!</li>
       </ol>
     </div>
 
@@ -392,32 +449,30 @@
       <button class="tab-btn" id="tab-special" type="button">Special Key Block</button>
     </div>
 
-    <div class="tab-content" id="tabParagraphContent">
-  <h2>Paragraph to Type</h2>
-  <p class="muted">Type the paragraph below exactly as shown.</p>
+    <div class="tab-content active" id="tabParagraphContent">
 
   <pre>The quick brown fox jumps over the lazy dog while amazing zebras quietly vex jumpy kids, proving every letter is present. Pack my box with five dozen liquor jugs to verify the alphabet twice.
-  Digits appear forward and backward: 1234567890 then 0987654321, followed by sequences like 2468, 13579, and 314159.
-  Now we add punctuation: . , ; : ? ! ' " - _ ( ) [ ] { } / \
-  Symbols and operators: @ # $ % ^ & * + = &lt; &gt; | ~
-  To include uppercase properly, acronyms like NASA, USA, UN, AI, ML, and HTML are written in full caps.
-  Typing speed and accuracy will be measured across every key, ensuring consistency of captured events.
-  Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes features [alpha], {bravo}, and (charlie), all typed carefully for complete coverage of the QWERTY keyboard.</pre>
+Digits appear forward and backward: 1234567890 then 0987654321, followed by sequences like 2468, 13579, and 314159.
+Now we add punctuation: . , ; : ? ! ' " - _ ( ) [ ] { } / \
+Symbols and operators: @ # $ % ^ & * + = &lt; &gt; | ~
+To include uppercase properly, acronyms like NASA, USA, UN, AI, ML, and HTML are written in full caps.
+Typing speed and accuracy will be measured across every key, ensuring consistency of captured events.
+Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes features [alpha], {bravo}, and (charlie), all typed carefully for complete coverage of the QWERTY keyboard.</pre>
 
     </div>
     <div class="tab-content" id="tabSpecialContent" style="display:none">
       <pre>
-    1) Tab
-    2) Backspace
-    3) Delete
-    4) Arrow Up
-    5) Arrow Down
-    6) Arrow Left
-    7) Arrow Right
-    8) Esc
-    9) F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12
-    10) Caps Lock (press once to enable, once to disable)
-    11) Enter (to confirm completion)
+1) Tab
+2) Backspace
+3) Delete
+4) Arrow Up
+5) Arrow Down
+6) Arrow Left
+7) Arrow Right
+8) Esc
+9) F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12
+10) Caps Lock (press once to enable, once to disable)
+11) Enter (to confirm completion)
       </pre>
     </div>
     <!-- Now the typing box and start/stop buttons go below as before -->
@@ -482,6 +537,47 @@
       tabSpecialContent.style.display = '';
       tabParagraphContent.style.display = 'none';
       });
+
+     // FIXED: Aggressive text visibility enforcement
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      const allPre = document.querySelectorAll('.tab-content pre, #tabParagraphContent pre, #tabSpecialContent pre');
+      
+      allPre.forEach(function(pre, index) {
+        // Use cssText for maximum override power
+        pre.style.cssText = `
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          color: #000000 !important;
+          background: #f8f9fa !important;
+          padding: 16px !important;
+          border: 1px solid #dee2e6 !important;
+          border-radius: 8px !important;
+          font-size: 14px !important;
+          line-height: 1.8 !important;
+          font-family: 'Courier New', Consolas, monospace !important;
+          white-space: pre-wrap !important;
+          word-break: break-word !important;
+        `;
+        
+        console.log('Pre tag #' + (index + 1) + ':', pre.textContent.length + ' characters');
+      });
+      
+      // Apply dark mode styles if needed
+      if (document.body.classList.contains('dark-mode')) {
+        allPre.forEach(function(pre) {
+          pre.style.color = '#ffffff';
+          pre.style.background = '#2d3748';
+          pre.style.borderColor = '#4a5568';
+        });
+      }
+      
+      console.log('✅ Text forced visible for', allPre.length, 'pre tags');
+    }, 150);
+  });
+
+
 
     // ==================== DEVICE DETECTION ====================
     function detectBrowser() {
