@@ -209,6 +209,65 @@
       accent-color: #60a5fa;
     }
 
+    /* Tab Styles */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid var(--border-light);
+    }
+    .tab-button {
+      background: transparent;
+      border: none;
+      padding: 12px 20px;
+      font-size: 1em;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+      position: relative;
+      bottom: -2px;
+    }
+    .tab-button:hover {
+      color: var(--accent-primary);
+    }
+    .tab-button.active {
+      color: var(--accent-primary);
+      border-bottom-color: var(--accent-primary);
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .instruction-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    .instruction-box h3 {
+      margin: 0 0 10px 0;
+      font-size: 1.1em;
+      font-weight: 700;
+    }
+    .instruction-box ol {
+      margin: 8px 0 0 0;
+      padding-left: 20px;
+      line-height: 1.8;
+    }
+    .instruction-box li {
+      margin-bottom: 6px;
+    }
+    .instruction-box strong {
+      font-weight: 700;
+      text-decoration: underline;
+    }
+
 
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -298,6 +357,19 @@
       <label for="consentChk">I consent to participate in this research recording.</label>
     </div>
 
+    <!-- Instructions Box -->
+    <div class="instruction-box">
+      <h3>📝 Typing Instructions</h3>
+      <ol>
+        <li><strong>Step 1:</strong> Click "Start Recording" button below</li>
+        <li><strong>Step 2:</strong> Type the complete <strong>"Paragraph to Type"</strong> exactly as shown</li>
+        <li><strong>Step 3:</strong> Switch to <strong>"Special Key Block"</strong> tab and type that text</li>
+        <li><strong>Step 4:</strong> Click "Stop Recording" when finished</li>
+        <li><strong>Important:</strong> Both forms (Paragraph + Special Keys) are mandatory!</li>
+      </ol>
+    </div>
+
+
     <div class="sep"></div>
     <!-- Tab/Slider for paragraph or special keys -->
     <div class="tab-container">
@@ -306,15 +378,17 @@
     </div>
 
     <div class="tab-content" id="tabParagraphContent">
-      <pre id="paragraphText">
-    The quick brown fox jumps over the lazy dog while amazing zebras quietly vex jumpy kids, proving every letter is present. Pack my box with five dozen liquor jugs to verify the alphabet twice.
-    Digits appear forward and backward: 1234567890 then 0987654321, followed by sequences like 2468, 13579, and 314159.
-    Now we add punctuation: . , ; : ? ! ' " - _ ( ) [ ] { } / \
-    Symbols and operators: @ # $ % ^ & * + = < > | ~
-    To include uppercase properly, acronyms like NASA, USA, UN, AI, ML, and HTML are written in full caps.
-    Typing speed and accuracy will be measured across every key, ensuring consistency of captured events.
-    Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes features [alpha], {bravo}, and (charlie), all typed carefully for complete coverage of the QWERTY keyboard.
-      </pre>
+  <h2>Paragraph to Type</h2>
+  <p class="muted">Type the paragraph below exactly as shown.</p>
+
+  <pre>The quick brown fox jumps over the lazy dog while amazing zebras quietly vex jumpy kids, proving every letter is present. Pack my box with five dozen liquor jugs to verify the alphabet twice.
+  Digits appear forward and backward: 1234567890 then 0987654321, followed by sequences like 2468, 13579, and 314159.
+  Now we add punctuation: . , ; : ? ! ' " - _ ( ) [ ] { } / \
+  Symbols and operators: @ # $ % ^ & * + = &lt; &gt; | ~
+  To include uppercase properly, acronyms like NASA, USA, UN, AI, ML, and HTML are written in full caps.
+  Typing speed and accuracy will be measured across every key, ensuring consistency of captured events.
+  Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes features [alpha], {bravo}, and (charlie), all typed carefully for complete coverage of the QWERTY keyboard.</pre>
+
     </div>
     <div class="tab-content" id="tabSpecialContent" style="display:none">
       <pre>
@@ -829,8 +903,8 @@
     // ==================== UPLOAD TO GOOGLE DRIVE ====================
     async function uploadToGoogleDrive(zipBlob, metadata) {
       try {
-        statusEl.innerText = 'Uploading to Google Drive...';
-        console.log('Starting upload...');
+        statusEl.innerText = 'Preparing upload...';
+        console.log('Starting chunked upload...');
         
         const reader = new FileReader();
         const base64Data = await new Promise((resolve, reject) => {
@@ -850,90 +924,112 @@
         const zipFileName = `${currentParticipantId}_S${currentSessionNumber}_P${selectedPerson}_${genderEl.value}_${handEl.value}.zip`;
         console.log('Uploading file:', zipFileName);
         
-        // Prepare upload data - MAKE SURE ALL FIELDS ARE INCLUDED
-        const uploadData = {
-          deviceId: currentDeviceId,
-          participantId: currentParticipantId,
-          session: currentSessionNumber,
-          person: selectedPerson,  // IMPORTANT: Make sure this is included
-          gender: genderEl.value,
-          handedness: handEl.value,
-          zipData: base64Data,
-          zipFileName: zipFileName
-        };
+        // Split into chunks (3.5MB per chunk to stay under 4.5MB limit)
+        const CHUNK_SIZE = 3.5 * 1024 * 1024; // 3.5 MB in bytes
+        const base64ChunkSize = Math.floor((CHUNK_SIZE * 4) / 3); // Base64 is ~33% larger
+        const totalChunks = Math.ceil(base64Data.length / base64ChunkSize);
+        const sessionId = `${currentParticipantId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        console.log(`File size: ${(base64Data.length / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`Splitting into ${totalChunks} chunks of ~${(base64ChunkSize / 1024 / 1024).toFixed(2)} MB each`);
         
-        console.log('Upload data prepared:', {
-          deviceId: uploadData.deviceId,
-          participantId: uploadData.participantId,
-          session: uploadData.session,
-          person: uploadData.person,
-          fileName: uploadData.zipFileName,
-          dataSize: uploadData.zipData.length
-        });
-        
-        const uploadResponse = await fetch(`${API_BASE}/upload-to-drive`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(uploadData)
-        });
-        
-        if (!uploadResponse.ok) {
-          const errorText = await uploadResponse.text();
-          console.error('Upload failed:', errorText);
-          throw new Error(`Upload failed: ${errorText}`);
+        statusEl.innerText = `Uploading to Google Drive (0/${totalChunks} chunks)...`;
+
+        // Upload chunks sequentially
+        for (let i = 0; i < totalChunks; i++) {
+          const start = i * base64ChunkSize;
+          const end = Math.min(start + base64ChunkSize, base64Data.length);
+          const chunkData = base64Data.substring(start, end);
+          
+          console.log(`Uploading chunk ${i + 1}/${totalChunks}, size: ${(chunkData.length / 1024 / 1024).toFixed(2)} MB`);
+          statusEl.innerText = `Uploading to Google Drive (${i + 1}/${totalChunks} chunks)...`;
+
+          const chunkResponse = await fetch(`${API_BASE}/upload-chunk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chunkData: chunkData,
+              chunkIndex: i,
+              totalChunks: totalChunks,
+              sessionId: sessionId,
+              fileName: zipFileName,
+              deviceId: currentDeviceId,
+              participantId: currentParticipantId,
+              session: currentSessionNumber,
+              person: selectedPerson,
+              gender: genderEl.value,
+              handedness: handEl.value,
+              isLast: i === totalChunks - 1
+            })
+          });
+
+          if (!chunkResponse.ok) {
+            const errorText = await chunkResponse.text();
+            console.error(`Chunk ${i + 1} upload failed:`, errorText);
+            throw new Error(`Chunk upload failed: ${errorText}`);
+          }
+
+          const chunkResult = await chunkResponse.json();
+          console.log(`Chunk ${i + 1} result:`, chunkResult);
+
+          // If this was the last chunk and upload is complete
+          if (i === totalChunks - 1 && chunkResult.success) {
+            console.log('All chunks uploaded successfully!');
+            
+            // Update CSV
+            statusEl.innerText = 'Updating CSV...';
+            
+            const csvData = {
+              deviceId: currentDeviceId,
+              participantId: currentParticipantId,
+              session: currentSessionNumber,
+              person: selectedPerson,
+              gender: genderEl.value,
+              handedness: handEl.value,
+              totalKeys: keyEvents.length,
+              browserInfo: browserInfo,
+              osInfo: browserInfo.os,
+              typingSpeed: typingSpeed.wpm,
+              typingCategory: typingSpeed.category
+            };
+            
+            console.log('Updating CSV with data:', csvData);
+            
+            const csvResponse = await fetch(`${API_BASE}/update-csv`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(csvData)
+            });
+            
+            if (!csvResponse.ok) {
+              const csvError = await csvResponse.text();
+              console.error('CSV update failed:', csvError);
+            } else {
+              const csvResult = await csvResponse.json();
+              console.log('CSV updated successfully:', csvResult);
+            }
+            
+            statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | File uploaded successfully`;
+            inputArea.value = '';
+            
+            // Show forms prompt if you have that function
+            if (typeof showFormsPrompt === 'function') {
+              showFormsPrompt(typingSpeed);
+            } else {
+              setTimeout(() => {
+                alert(`Recording complete!\n\nParticipant: ${currentParticipantId}\nSession: ${currentSessionNumber}\nPerson: ${selectedPerson}\nTyping Speed: ${typingSpeed.wpm} WPM (${typingSpeed.category})\n\nFile uploaded to Google Drive!\n\nFile: ${zipFileName}`);
+              }, 500);
+            }
+          }
         }
-        
-        const uploadResult = await uploadResponse.json();
-        console.log('Upload successful:', uploadResult);
-        
-        if (!uploadResult.success) {
-          throw new Error('Upload reported failure');
-        }
-        
-        statusEl.innerText = 'Updating CSV...';
-        
-        // UPDATE CSV - Make sure to call this
-        const csvData = {
-          deviceId: currentDeviceId,
-          participantId: currentParticipantId,
-          session: currentSessionNumber,
-          person: selectedPerson,
-          gender: genderEl.value,
-          handedness: handEl.value,
-          totalKeys: keyEvents.length,
-          browserInfo: browserInfo,
-          osInfo: browserInfo.os,
-          typingSpeed: typingSpeed.wpm,
-          typingCategory: typingSpeed.category
-        };
-        
-        console.log('Updating CSV with data:', csvData);
-        
-        const csvResponse = await fetch(`${API_BASE}/update-csv`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(csvData)
-        });
-        
-        if (!csvResponse.ok) {
-          const csvError = await csvResponse.text();
-          console.error('CSV update failed:', csvError);
-        } else {
-          const csvResult = await csvResponse.json();
-          console.log('CSV updated successfully:', csvResult);
-        }
-        
-        statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | File uploaded successfully`;
-        inputArea.value = '';
-        
-        // Show forms after successful upload
-        showFormsPrompt(typingSpeed);
         
       } catch (err) {
         console.error('Upload process error:', err);
         statusEl.innerText = `❌ Upload failed: ${err.message}. File saved locally.`;
+        alert('Upload failed: ' + err.message + '\nThe file has been downloaded to your computer instead.');
       }
     }
+
 
     // ==================== SHOW FORMS PROMPT ====================
     function showFormsPrompt(typingSpeed) {
