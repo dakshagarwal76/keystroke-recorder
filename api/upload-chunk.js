@@ -9,6 +9,9 @@ export const config = {
   },
 };
 
+// Use Map for better chunk storage
+const uploadSessions = new Map();
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -34,81 +37,93 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    console.log(`[${sessionId}] Received chunk ${chunkIndex + 1}/${totalChunks}`);
+    console.log(`[${sessionId}] Received chunk ${chunkIndex + 1}/${totalChunks}, size: ${chunkData.length} chars`);
 
-    // Initialize session storage
-    global.uploadSessions = global.uploadSessions || {};
-    
-    if (!global.uploadSessions[sessionId]) {
-      global.uploadSessions[sessionId] = {
-        chunks: new Array(totalChunks).fill(null), // Initialize with nulls
+    // Get or create session
+    if (!uploadSessions.has(sessionId)) {
+      const newSession = {
+        chunks: {},  // Use object instead of array for better tracking
+        receivedCount: 0,
         fileName: fileName,
         totalChunks: totalChunks,
-        metadata: {
-          deviceId,
-          participantId,
-          session,
-          person,
-          gender,
-          handedness
-        }
+        metadata: { deviceId, participantId, session, person, gender, handedness }
       };
-      console.log(`[${sessionId}] New upload session created`);
+      uploadSessions.set(sessionId, newSession);
+      console.log(`[${sessionId}] New session created`);
     }
 
-    // Store chunk at the correct index
-    global.uploadSessions[sessionId].chunks[chunkIndex] = chunkData;
+    const sessionData = uploadSessions.get(sessionId);
+    
+    // Store chunk if not already stored
+    if (!sessionData.chunks[chunkIndex]) {
+      sessionData.chunks[chunkIndex] = chunkData;
+      sessionData.receivedCount++;
+      console.log(`[${sessionId}] Chunk ${chunkIndex} stored. Total received: ${sessionData.receivedCount}/${totalChunks}`);
+    } else {
+      console.log(`[${sessionId}] Chunk ${chunkIndex} already exists, skipping`);
+    }
 
-    // Count ACTUAL received chunks (non-null)
-    const receivedChunks = global.uploadSessions[sessionId].chunks.filter(c => c !== null && c !== undefined).length;
-    console.log(`[${sessionId}] Chunks received: ${receivedChunks}/${totalChunks}`);
+    const receivedChunks = sessionData.receivedCount;
 
-    // If this is the last chunk AND all chunks are received, upload to Drive
+    // Check if all chunks are received
     if (isLast && receivedChunks === totalChunks) {
-      console.log(`[${sessionId}] All chunks received! Combining and uploading...`);
+      console.log(`[${sessionId}] All ${totalChunks} chunks received! Combining and uploading...`);
 
-      // Combine all chunks
-      const fullBase64 = global.uploadSessions[sessionId].chunks.join('');
-      console.log(`[${sessionId}] Combined file size: ${(fullBase64.length / 1024 / 1024).toFixed(2)} MB`);
+      // Combine chunks in correct order
+      const chunksArray = [];
+      for (let i = 0; i < totalChunks; i++) {
+        if (!sessionData.chunks[i]) {
+          console.error(`[${sessionId}] Missing chunk ${i}!`);
+          return res.status(400).json({
+            success: false,
+            error: `Missing chunk ${i}`,
+            receivedChunks: receivedChunks,
+            totalChunks: totalChunks
+          });
+        }
+        chunksArray.push(sessionData.chunks[i]);
+      }
+
+      const fullBase64 = chunksArray.join('');
+      console.log(`[${sessionId}] Combined size: ${(fullBase64.length / 1024 / 1024).toFixed(2)} MB`);
       
-      // Convert base64 to buffer
+      // Convert to buffer
       const buffer = Buffer.from(fullBase64, 'base64');
-      console.log(`[${sessionId}] Buffer created, size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
+      console.log(`[${sessionId}] Buffer size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
       
-      // Create a readable stream from buffer
+      // Create readable stream
       const bufferStream = new Readable();
       bufferStream.push(buffer);
-      bufferStream.push(null); // Signal end of stream
+      bufferStream.push(null);
       
-      // Import getDriveClient
+      // Get Drive client
       const { getDriveClient } = await import('../lib/googleDriveClient.js');
       const drive = getDriveClient();
-      
-      // Get root folder ID
       const rootFolderId = process.env.DRIVE_FOLDER_ID;
       
-      // Upload to Google Drive with stream
-      const fileMetadata = {
-        name: fileName,
-        parents: [rootFolderId],
-      };
+      if (!rootFolderId) {
+        throw new Error('DRIVE_FOLDER_ID environment variable not set');
+      }
 
-      const media = {
-        mimeType: 'application/zip',
-        body: bufferStream,
-      };
+      console.log(`[${sessionId}] Uploading to Drive folder: ${rootFolderId}`);
 
-      console.log(`[${sessionId}] Uploading to Google Drive...`);
+      // Upload to Google Drive
       const response = await drive.files.create({
-        requestBody: fileMetadata,
-        media: media,
+        requestBody: {
+          name: fileName,
+          parents: [rootFolderId],
+        },
+        media: {
+          mimeType: 'application/zip',
+          body: bufferStream,
+        },
         fields: 'id, name, webViewLink',
       });
 
       // Clean up session
-      delete global.uploadSessions[sessionId];
+      uploadSessions.delete(sessionId);
 
-      console.log(`[${sessionId}] Upload successful! File ID: ${response.data.id}`);
+      console.log(`[${sessionId}] ✅ Upload successful! File ID: ${response.data.id}`);
 
       return res.status(200).json({
         success: true,
@@ -127,7 +142,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Chunk upload error:', error);
+    console.error('❌ Chunk upload error:', error);
     console.error('Error details:', error.message);
     console.error('Error stack:', error.stack);
     return res.status(500).json({
