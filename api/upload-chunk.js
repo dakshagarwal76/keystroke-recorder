@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     
     if (!global.uploadSessions[sessionId]) {
       global.uploadSessions[sessionId] = {
-        chunks: new Array(totalChunks),
+        chunks: new Array(totalChunks).fill(null), // Initialize with nulls
         fileName: fileName,
         totalChunks: totalChunks,
         metadata: {
@@ -56,16 +56,16 @@ export default async function handler(req, res) {
       console.log(`[${sessionId}] New upload session created`);
     }
 
-    // Store chunk
+    // Store chunk at the correct index
     global.uploadSessions[sessionId].chunks[chunkIndex] = chunkData;
 
-    // Count received chunks
-    const receivedChunks = global.uploadSessions[sessionId].chunks.filter(c => c !== undefined && c !== null).length;
+    // Count ACTUAL received chunks (non-null)
+    const receivedChunks = global.uploadSessions[sessionId].chunks.filter(c => c !== null && c !== undefined).length;
     console.log(`[${sessionId}] Chunks received: ${receivedChunks}/${totalChunks}`);
 
     // If this is the last chunk AND all chunks are received, upload to Drive
     if (isLast && receivedChunks === totalChunks) {
-      console.log(`[${sessionId}] All chunks received, combining and uploading...`);
+      console.log(`[${sessionId}] All chunks received! Combining and uploading...`);
 
       // Combine all chunks
       const fullBase64 = global.uploadSessions[sessionId].chunks.join('');
@@ -75,31 +75,27 @@ export default async function handler(req, res) {
       const buffer = Buffer.from(fullBase64, 'base64');
       console.log(`[${sessionId}] Buffer created, size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
       
-      // Create a readable stream from buffer (CRITICAL FIX)
+      // Create a readable stream from buffer
       const bufferStream = new Readable();
       bufferStream.push(buffer);
       bufferStream.push(null); // Signal end of stream
       
-      // Initialize Google Drive
-      const auth = new google.auth.GoogleAuth({
-        credentials: {
-          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-          private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        },
-        scopes: ['https://www.googleapis.com/auth/drive.file'],
-      });
-
-      const drive = google.drive({ version: 'v3', auth });
-
+      // Import getDriveClient
+      const { getDriveClient } = await import('../lib/googleDriveClient.js');
+      const drive = getDriveClient();
+      
+      // Get root folder ID
+      const rootFolderId = process.env.DRIVE_FOLDER_ID;
+      
       // Upload to Google Drive with stream
       const fileMetadata = {
         name: fileName,
-        parents: [process.env.GOOGLE_DRIVE_FOLDER_ID],
+        parents: [rootFolderId],
       };
 
       const media = {
         mimeType: 'application/zip',
-        body: bufferStream, // Use stream instead of buffer
+        body: bufferStream,
       };
 
       console.log(`[${sessionId}] Uploading to Google Drive...`);
