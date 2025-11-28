@@ -1,5 +1,8 @@
 import { google } from 'googleapis';
 import { Readable } from 'stream';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 export const config = {
   api: {
@@ -9,13 +12,12 @@ export const config = {
   },
 };
 
-// Use Map for better chunk storage
-const uploadSessions = new Map();
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  let tempFilePath = null;
 
   try {
     const { 
@@ -24,12 +26,6 @@ export default async function handler(req, res) {
       totalChunks, 
       sessionId, 
       fileName,
-      deviceId,
-      participantId,
-      session,
-      person,
-      gender,
-      handedness,
       isLast 
     } = req.body;
 
@@ -37,51 +33,37 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    console.log(`[${sessionId}] Received chunk ${chunkIndex + 1}/${totalChunks}, size: ${chunkData.length} chars`);
+    console.log(`[${sessionId}] Chunk ${chunkIndex + 1}/${totalChunks} received`);
 
-    // Get or create session
-    if (!uploadSessions.has(sessionId)) {
-      const newSession = {
-        chunks: {},  // Use object instead of array for better tracking
-        receivedCount: 0,
-        fileName: fileName,
-        totalChunks: totalChunks,
-        metadata: { deviceId, participantId, session, person, gender, handedness }
-      };
-      uploadSessions.set(sessionId, newSession);
-      console.log(`[${sessionId}] New session created`);
+    // Create temp directory for this session
+    const tempDir = path.join(os.tmpdir(), 'uploads', sessionId);
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    const sessionData = uploadSessions.get(sessionId);
-    
-    // Store chunk if not already stored
-    if (!sessionData.chunks[chunkIndex]) {
-      sessionData.chunks[chunkIndex] = chunkData;
-      sessionData.receivedCount++;
-      console.log(`[${sessionId}] Chunk ${chunkIndex} stored. Total received: ${sessionData.receivedCount}/${totalChunks}`);
-    } else {
-      console.log(`[${sessionId}] Chunk ${chunkIndex} already exists, skipping`);
-    }
+    // Save this chunk to a temp file
+    const chunkFilePath = path.join(tempDir, `chunk_${chunkIndex}.txt`);
+    fs.writeFileSync(chunkFilePath, chunkData);
+    console.log(`[${sessionId}] Chunk ${chunkIndex} saved to temp file`);
 
-    const receivedChunks = sessionData.receivedCount;
+    // Count how many chunks we have now
+    const chunkFiles = fs.readdirSync(tempDir).filter(f => f.startsWith('chunk_'));
+    const receivedCount = chunkFiles.length;
+    console.log(`[${sessionId}] Total chunks on disk: ${receivedCount}/${totalChunks}`);
 
-    // Check if all chunks are received
-    if (isLast && receivedChunks === totalChunks) {
-      console.log(`[${sessionId}] All ${totalChunks} chunks received! Combining and uploading...`);
+    // If this is the last chunk AND we have all chunks, upload
+    if (isLast && receivedCount === totalChunks) {
+      console.log(`[${sessionId}] All chunks present! Combining and uploading...`);
 
-      // Combine chunks in correct order
+      // Read and combine all chunks in order
       const chunksArray = [];
       for (let i = 0; i < totalChunks; i++) {
-        if (!sessionData.chunks[i]) {
-          console.error(`[${sessionId}] Missing chunk ${i}!`);
-          return res.status(400).json({
-            success: false,
-            error: `Missing chunk ${i}`,
-            receivedChunks: receivedChunks,
-            totalChunks: totalChunks
-          });
+        const chunkPath = path.join(tempDir, `chunk_${i}.txt`);
+        if (!fs.existsSync(chunkPath)) {
+          throw new Error(`Missing chunk ${i}`);
         }
-        chunksArray.push(sessionData.chunks[i]);
+        const chunkContent = fs.readFileSync(chunkPath, 'utf8');
+        chunksArray.push(chunkContent);
       }
 
       const fullBase64 = chunksArray.join('');
@@ -89,25 +71,20 @@ export default async function handler(req, res) {
       
       // Convert to buffer
       const buffer = Buffer.from(fullBase64, 'base64');
-      console.log(`[${sessionId}] Buffer size: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
       
-      // Create readable stream
-      const bufferStream = new Readable();
-      bufferStream.push(buffer);
-      bufferStream.push(null);
+      // Write combined file to temp location
+      tempFilePath = path.join(os.tmpdir(), `${sessionId}.zip`);
+      fs.writeFileSync(tempFilePath, buffer);
+      console.log(`[${sessionId}] Temp file created: ${tempFilePath}`);
       
       // Get Drive client
       const { getDriveClient } = await import('../lib/googleDriveClient.js');
       const drive = getDriveClient();
       const rootFolderId = process.env.DRIVE_FOLDER_ID;
       
-      if (!rootFolderId) {
-        throw new Error('DRIVE_FOLDER_ID environment variable not set');
-      }
-
       console.log(`[${sessionId}] Uploading to Drive folder: ${rootFolderId}`);
 
-      // Upload to Google Drive
+      // Upload using file stream
       const response = await drive.files.create({
         requestBody: {
           name: fileName,
@@ -115,15 +92,22 @@ export default async function handler(req, res) {
         },
         media: {
           mimeType: 'application/zip',
-          body: bufferStream,
+          body: fs.createReadStream(tempFilePath),
         },
         fields: 'id, name, webViewLink',
       });
 
-      // Clean up session
-      uploadSessions.delete(sessionId);
-
       console.log(`[${sessionId}] ✅ Upload successful! File ID: ${response.data.id}`);
+
+      // Clean up temp files
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        if (tempFilePath && fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Cleanup error:', cleanupErr);
+      }
 
       return res.status(200).json({
         success: true,
@@ -137,14 +121,20 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       message: `Chunk ${chunkIndex + 1}/${totalChunks} received`,
-      chunksReceived: receivedChunks,
+      chunksReceived: receivedCount,
       totalChunks: totalChunks
     });
 
   } catch (error) {
-    console.error('❌ Chunk upload error:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('❌ Upload error:', error);
+    
+    // Clean up on error
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (e) {}
+    }
+    
     return res.status(500).json({
       success: false,
       error: error.message || 'Upload failed',
