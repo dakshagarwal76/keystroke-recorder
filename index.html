@@ -918,10 +918,21 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       mediaRecorder.ondataavailable = (e) => {
         if (e.data && e.data.size) recordedChunks.push(e.data);
       };
-      mediaRecorder.onstop = async () => {
-        statusEl.innerText = 'Processing recording...';
-        await processRecordingAndCreateZip();
+      mediaRecorder.onstop = async function() {
+        console.log('Recording stopped.');
+        
+        // Calculate typing speed
+        const typingSpeed = calculateTypingSpeed();
+        
+        // Show forms IMMEDIATELY when stop is pressed
+        statusEl.innerText = 'Recording complete! Please fill the Google Forms below.';
+        showFormsPrompt(typingSpeed);
+        
+        // Then process and upload in background
+        statusEl.innerText = 'Processing and uploading...';
+        await processRecordingAndCreateZIP();
       };
+
 
       recordingStartPerf = performance.now();
       mediaRecorder.start();
@@ -1151,9 +1162,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | Uploaded to ${folderPath}`;
         inputArea.value = '';
         
-        setTimeout(() => {
-          alert(`Recording complete!\n\nParticipant: ${currentParticipantId}\nSession: ${currentSessionNumber}\nPerson: ${selectedPerson}\nTyping Speed: ${typingSpeed.wpm} WPM (${typingSpeed.category})\n\nFile uploaded to: ${folderPath}`);
-        }, 500);
+        showFormsPrompt(typingSpeed);
         
       } catch (err) {
         console.error('Upload error:', err);

@@ -141,11 +141,14 @@ export default async function handler(req, res) {
     }
 
     // Increment session count for Person 1 (default on page load)
-    participantData.persons['1'].sessionCount += 1;
+    // Get current session count (0 for new person)
+    const currentSessionCount = participantData.persons['1'].sessionCount || 0;
     participantData.persons['1'].lastAccess = new Date().toISOString();
     participantData.lastAccess = new Date().toISOString();
 
-    const sessionNumber = participantData.persons['1'].sessionCount;
+    // Session number is completedSubmissions + 1 (so first session is 1)
+    const sessionNumber = (participantData.persons['1'].completedSubmissions || 0) + 1;
+
 
     // Determine which persons are unlocked
     const unlockedPersons = [1]; // Person 1 always unlocked
