@@ -1013,38 +1013,112 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     // ==================== UPLOAD TO GOOGLE DRIVE ====================
     async function uploadToGoogleDrive(zipBlob, metadata) {
       try {
-        statusEl.innerText = 'Uploading to Google Drive...';
-        console.log('Starting streaming upload...');
+        statusEl.innerText = 'Preparing upload...';
         console.log('File size:', (zipBlob.size / 1024 / 1024).toFixed(2), 'MB');
 
         const typingSpeed = calculateTypingSpeed();
         const selectedPerson = personEl.value;
         const zipFileName = `${currentParticipantId}_S${currentSessionNumber}_P${selectedPerson}_${genderEl.value}_${handEl.value}.zip`;
 
-        // Create FormData for streaming upload
-        const formData = new FormData();
-        formData.append('file', zipBlob, zipFileName);
-        formData.append('fileName', zipFileName);
-        formData.append('participantId', currentParticipantId);
-        formData.append('session', currentSessionNumber);
-        formData.append('person', selectedPerson);
-        formData.append('deviceId', currentDeviceId);
-        formData.append('gender', genderEl.value);
-        formData.append('handedness', handEl.value);
-
-        const uploadResponse = await fetch(`${API_BASE}/upload-stream`, {
+        // Get upload token from your API
+        statusEl.innerText = 'Getting upload credentials...';
+        const tokenResponse = await fetch(`${API_BASE}/get-upload-token`, {
           method: 'POST',
-          body: formData // No Content-Type header - browser sets it automatically
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!tokenResponse.ok) {
+          throw new Error('Failed to get upload token');
+        }
+
+        const { access_token, rootFolderId } = await tokenResponse.json();
+
+        // Helper function to ensure folder exists
+        async function ensureFolder(parentId, folderName) {
+          const searchUrl = `https://www.googleapis.com/drive/v3/files?q=name='${folderName}'+and+'${parentId}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id)`;
+          const searchRes = await fetch(searchUrl, {
+            headers: { 'Authorization': `Bearer ${access_token}` }
+          });
+          const searchData = await searchRes.json();
+          
+          if (searchData.files && searchData.files.length > 0) {
+            return searchData.files[0].id;
+          }
+          
+          // Create folder
+          const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${access_token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: folderName,
+              mimeType: 'application/vnd.google-apps.folder',
+              parents: [parentId]
+            })
+          });
+          
+          const createData = await createRes.json();
+          return createData.id;
+        }
+
+        // Create folder structure
+        statusEl.innerText = 'Creating folder structure...';
+        console.log('Creating folders...');
+        
+        const participantFolderId = await ensureFolder(rootFolderId, currentParticipantId);
+        const personFolderId = await ensureFolder(participantFolderId, `Person_${selectedPerson}`);
+        const sessionFolderId = await ensureFolder(personFolderId, `Session_${currentSessionNumber}`);
+        
+        console.log('Folder structure created');
+
+        // Upload file directly to Google Drive using resumable upload
+        statusEl.innerText = 'Uploading to Google Drive...';
+        console.log('Starting resumable upload...');
+
+        // Step 1: Initialize resumable upload
+        const metadata = {
+          name: zipFileName,
+          parents: [sessionFolderId],
+          mimeType: 'application/zip'
+        };
+
+        const initResponse = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${access_token}`,
+            'Content-Type': 'application/json; charset=UTF-8',
+            'X-Upload-Content-Type': 'application/zip',
+            'X-Upload-Content-Length': zipBlob.size
+          },
+          body: JSON.stringify(metadata)
+        });
+
+        if (!initResponse.ok) {
+          const errorText = await initResponse.text();
+          throw new Error(`Failed to initialize upload: ${errorText}`);
+        }
+
+        const uploadUrl = initResponse.headers.get('Location');
+        console.log('Upload session created');
+
+        // Step 2: Upload the file
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/zip'
+          },
+          body: zipBlob
         });
 
         if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text();
-          console.error('Upload failed:', errorText);
           throw new Error(`Upload failed: ${errorText}`);
         }
 
         const uploadResult = await uploadResponse.json();
-        console.log('✅ Upload successful:', uploadResult);
+        console.log('✅ Upload successful! File ID:', uploadResult.id);
 
         // Update CSV
         statusEl.innerText = 'Updating CSV...';
@@ -1063,25 +1137,31 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
           typingCategory: typingSpeed.category
         };
         
-        await fetch(`${API_BASE}/update-csv`, {
+        const csvResponse = await fetch(`${API_BASE}/update-csv`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(csvData)
         });
         
-        statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | Uploaded to ${uploadResult.folder}`;
+        if (csvResponse.ok) {
+          console.log('CSV updated successfully');
+        }
+        
+        const folderPath = `${currentParticipantId}/Person_${selectedPerson}/Session_${currentSessionNumber}`;
+        statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | Uploaded to ${folderPath}`;
         inputArea.value = '';
         
         setTimeout(() => {
-          alert(`Recording complete!\n\nFile uploaded to: ${uploadResult.folder}\nTyping Speed: ${typingSpeed.wpm} WPM`);
+          alert(`Recording complete!\n\nParticipant: ${currentParticipantId}\nSession: ${currentSessionNumber}\nPerson: ${selectedPerson}\nTyping Speed: ${typingSpeed.wpm} WPM (${typingSpeed.category})\n\nFile uploaded to: ${folderPath}`);
         }, 500);
         
       } catch (err) {
         console.error('Upload error:', err);
         statusEl.innerText = `❌ Upload failed: ${err.message}`;
-        alert('Upload failed: ' + err.message);
+        alert('Upload failed: ' + err.message + '\nCheck console (F12) for details.');
       }
     }
+
 
 
 
