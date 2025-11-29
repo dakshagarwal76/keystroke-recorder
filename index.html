@@ -918,19 +918,18 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       mediaRecorder.ondataavailable = (e) => {
         if (e.data && e.data.size) recordedChunks.push(e.data);
       };
-      mediaRecorder.onstop = async function() {
+      mediaRecorder.onstop = async () => {
         console.log('Recording stopped.');
         
-        // Calculate typing speed
         const typingSpeed = calculateTypingSpeed();
         
-        // Show forms IMMEDIATELY when stop is pressed
+        // Show forms IMMEDIATELY
         statusEl.innerText = 'Recording complete! Please fill the Google Forms below.';
         showFormsPrompt(typingSpeed);
         
-        // Then process and upload in background
+        // Then process and upload
         statusEl.innerText = 'Processing and uploading...';
-        await processRecordingAndCreateZIP();
+        await processRecordingAndCreateZip();  // ✅ CORRECT - lowercase z
       };
 
 
