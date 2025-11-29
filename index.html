@@ -1014,7 +1014,7 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     async function uploadToGoogleDrive(zipBlob, metadata) {
       try {
         statusEl.innerText = 'Preparing upload...';
-        console.log('Starting chunked upload...');
+        console.log('Starting upload...');
         
         const reader = new FileReader();
         const base64Data = await new Promise((resolve, reject) => {
@@ -1028,117 +1028,88 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         const typingSpeed = calculateTypingSpeed();
         console.log('Typing speed:', typingSpeed);
         
-        // Get selected person value
         const selectedPerson = personEl.value;
-        
         const zipFileName = `${currentParticipantId}_S${currentSessionNumber}_P${selectedPerson}_${genderEl.value}_${handEl.value}.zip`;
         console.log('Uploading file:', zipFileName);
         
-        // Split into chunks (3.5MB per chunk to stay under 4.5MB limit)
-        const CHUNK_SIZE = 2 * 1024 * 1024; // 3.5 MB in bytes
-        const base64ChunkSize = Math.floor((CHUNK_SIZE * 4) / 3); // Base64 is ~33% larger
-        const totalChunks = Math.ceil(base64Data.length / base64ChunkSize);
-        const sessionId = `${currentParticipantId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        statusEl.innerText = 'Uploading to Google Drive...';
 
-        console.log(`File size: ${(base64Data.length / 1024 / 1024).toFixed(2)} MB`);
-        console.log(`Splitting into ${totalChunks} chunks of ~${(base64ChunkSize / 1024 / 1024).toFixed(2)} MB each`);
-        
-        statusEl.innerText = `Uploading to Google Drive (0/${totalChunks} chunks)...`;
+        // Send complete file in single request
+        const uploadResponse = await fetch(`${API_BASE}/upload-to-drive`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            zipData: base64Data,
+            fileName: zipFileName,
+            deviceId: currentDeviceId,
+            participantId: currentParticipantId,
+            session: currentSessionNumber,
+            person: selectedPerson,
+            gender: genderEl.value,
+            handedness: handEl.value
+          })
+        });
 
-        // Upload chunks sequentially
-        for (let i = 0; i < totalChunks; i++) {
-          const start = i * base64ChunkSize;
-          const end = Math.min(start + base64ChunkSize, base64Data.length);
-          const chunkData = base64Data.substring(start, end);
-          
-          console.log(`Uploading chunk ${i + 1}/${totalChunks}, size: ${(chunkData.length / 1024 / 1024).toFixed(2)} MB`);
-          statusEl.innerText = `Uploading to Google Drive (${i + 1}/${totalChunks} chunks)...`;
-
-          const chunkResponse = await fetch(`${API_BASE}/upload-chunk`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chunkData: chunkData,
-              chunkIndex: i,
-              totalChunks: totalChunks,
-              sessionId: sessionId,
-              fileName: zipFileName,
-              deviceId: currentDeviceId,
-              participantId: currentParticipantId,
-              session: currentSessionNumber,
-              person: selectedPerson,
-              gender: genderEl.value,
-              handedness: handEl.value,
-              isLast: i === totalChunks - 1
-            })
-          });
-
-          if (!chunkResponse.ok) {
-            const errorText = await chunkResponse.text();
-            console.error(`Chunk ${i + 1} upload failed:`, errorText);
-            throw new Error(`Chunk upload failed: ${errorText}`);
-          }
-
-          const chunkResult = await chunkResponse.json();
-          console.log(`Chunk ${i + 1} result:`, chunkResult);
-
-          // If this was the last chunk and upload is complete
-          if (i === totalChunks - 1 && chunkResult.success) {
-            console.log('All chunks uploaded successfully!');
-            
-            // Update CSV
-            statusEl.innerText = 'Updating CSV...';
-            
-            const csvData = {
-              deviceId: currentDeviceId,
-              participantId: currentParticipantId,
-              session: currentSessionNumber,
-              person: selectedPerson,
-              gender: genderEl.value,
-              handedness: handEl.value,
-              totalKeys: keyEvents.length,
-              browserInfo: browserInfo,
-              osInfo: browserInfo.os,
-              typingSpeed: typingSpeed.wpm,
-              typingCategory: typingSpeed.category
-            };
-            
-            console.log('Updating CSV with data:', csvData);
-            
-            const csvResponse = await fetch(`${API_BASE}/update-csv`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(csvData)
-            });
-            
-            if (!csvResponse.ok) {
-              const csvError = await csvResponse.text();
-              console.error('CSV update failed:', csvError);
-            } else {
-              const csvResult = await csvResponse.json();
-              console.log('CSV updated successfully:', csvResult);
-            }
-            
-            statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | File uploaded successfully`;
-            inputArea.value = '';
-            
-            // Show forms prompt if you have that function
-            if (typeof showFormsPrompt === 'function') {
-              showFormsPrompt(typingSpeed);
-            } else {
-              setTimeout(() => {
-                alert(`Recording complete!\n\nParticipant: ${currentParticipantId}\nSession: ${currentSessionNumber}\nPerson: ${selectedPerson}\nTyping Speed: ${typingSpeed.wpm} WPM (${typingSpeed.category})\n\nFile uploaded to Google Drive!\n\nFile: ${zipFileName}`);
-              }, 500);
-            }
-          }
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error('Upload failed:', errorText);
+          throw new Error(`Upload failed: ${errorText}`);
         }
+
+        const uploadResult = await uploadResponse.json();
+        console.log('Upload successful:', uploadResult);
+
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || 'Upload reported failure');
+        }
+
+        // Update CSV
+        statusEl.innerText = 'Updating CSV...';
+        
+        const csvData = {
+          deviceId: currentDeviceId,
+          participantId: currentParticipantId,
+          session: currentSessionNumber,
+          person: selectedPerson,
+          gender: genderEl.value,
+          handedness: handEl.value,
+          totalKeys: keyEvents.length,
+          browserInfo: browserInfo,
+          osInfo: browserInfo.os,
+          typingSpeed: typingSpeed.wpm,
+          typingCategory: typingSpeed.category
+        };
+        
+        console.log('Updating CSV with data:', csvData);
+        
+        const csvResponse = await fetch(`${API_BASE}/update-csv`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(csvData)
+        });
+        
+        if (!csvResponse.ok) {
+          const csvError = await csvResponse.text();
+          console.error('CSV update failed:', csvError);
+        } else {
+          const csvResult = await csvResponse.json();
+          console.log('CSV updated successfully:', csvResult);
+        }
+        
+        statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | File uploaded successfully`;
+        inputArea.value = '';
+        
+        setTimeout(() => {
+          alert(`Recording complete!\n\nParticipant: ${currentParticipantId}\nSession: ${currentSessionNumber}\nPerson: ${selectedPerson}\nTyping Speed: ${typingSpeed.wpm} WPM (${typingSpeed.category})\n\nFile uploaded to Google Drive!`);
+        }, 500);
         
       } catch (err) {
         console.error('Upload process error:', err);
         statusEl.innerText = `❌ Upload failed: ${err.message}. File saved locally.`;
-        alert('Upload failed: ' + err.message + '\nThe file has been downloaded to your computer instead.');
+        alert('Upload failed: ' + err.message);
       }
     }
+
 
 
     // ==================== SHOW FORMS PROMPT ====================

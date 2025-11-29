@@ -1,5 +1,16 @@
 import { getDriveClient, getFileContent, updateFile } from '../lib/googleDriveClient';
 
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+  maxDuration: 60,
+};
+
+
 // Helper function to ensure folder exists, create if not
 async function ensureFolder(drive, parentId, folderName) {
   try {

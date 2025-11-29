@@ -1,7 +1,12 @@
 {
   "functions": {
-    "api/**/*.js": {
-      "maxDuration": 60
+    "api/upload-to-drive.js": {
+      "maxDuration": 60,
+      "memory": 3008
+    },
+    "api/upload-chunk.js": {
+      "maxDuration": 30,
+      "memory": 1024
     }
   }
 }
