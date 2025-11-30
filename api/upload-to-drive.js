@@ -136,6 +136,13 @@ export default async function handler(req, res) {
             };
           }
           
+          // Save updated counter
+          const counterBuffer = Buffer.from(JSON.stringify(counter, null, 2));
+          await updateFile(drive, counterData.id, counterBuffer, 'application/json');
+          console.log('Counter.json updated successfully');
+          console.log('Updated counter for device:', deviceId);
+          console.log('Updated person data:', participantData.persons[person]);
+
           // Increment completed submissions for this person
           // Increment BOTH sessionCount and completedSubmissions
           participantData.persons[person].sessionCount += 1;

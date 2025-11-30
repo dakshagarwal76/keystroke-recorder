@@ -794,7 +794,8 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         
         pidEl.value = currentParticipantId;
         sessionEl.value = currentSessionNumber;
-        sessionInfo.innerText = `Session ${currentSessionNumber}`;
+        sessionInfo.innerText = `Next session for Person 1`;
+
         
         // UPDATE PERSON DROPDOWN BASED ON UNLOCKED PERSONS
         updatePersonDropdown();
@@ -803,8 +804,10 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         console.log('Setup complete:', { 
           currentParticipantId, 
           currentSessionNumber, 
-          unlockedPersons 
+          unlockedPersons,
+          personsData: data.personsData
         });
+
         
 
       } catch (err) {

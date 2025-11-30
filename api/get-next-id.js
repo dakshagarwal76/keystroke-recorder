@@ -149,6 +149,17 @@ export default async function handler(req, res) {
     // Session number is completedSubmissions + 1 (so first session is 1)
    // Don't increment or calculate session on page load - just return current state
     // Session will be determined by frontend based on selected person
+    // Ensure all 5 persons exist with default values (even if not unlocked yet)
+    for (let i = 1; i <= 5; i++) {
+      const personKey = String(i);
+      if (!participantData.persons[personKey]) {
+        participantData.persons[personKey] = {
+          sessionCount: 0,
+          completedSubmissions: 0,
+          lastAccess: null
+        };
+      }
+    }
 
     // Determine which persons are unlocked
     const unlockedPersons = [1]; // Person 1 always unlocked
@@ -215,6 +226,9 @@ export default async function handler(req, res) {
 
 
     console.log(`Participant loaded: ${participantId}`);
+    console.log('Participant loaded:', participantId);
+    console.log('Persons data:', personsData);
+    console.log('Unlocked persons:', unlockedPersons);
 
     // Return participant ID, session number, and unlocked persons
     res.json({ 
