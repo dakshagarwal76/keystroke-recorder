@@ -818,15 +818,21 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
     }  // <-- This closes getNextParticipantId function
 
     // Update session number when person dropdown changes
-    personEl.addEventListener('change', function() {
-      const selectedPerson = personEl.value;
-      if (window.personsData && window.personsData[selectedPerson]) {
-        currentSessionNumber = window.personsData[selectedPerson].nextSession;
-        sessionEl.value = currentSessionNumber;
-        sessionInfo.textContent = `Next session for Person ${selectedPerson}`;
-        console.log(`Person ${selectedPerson} selected - Next session: ${currentSessionNumber}`);
-      }
-    });
+// Update session number when person dropdown changes
+    if (personEl) {
+      personEl.addEventListener('change', function() {
+        const selectedPerson = personEl.value;
+        if (window.personsData && window.personsData[selectedPerson]) {
+          currentSessionNumber = window.personsData[selectedPerson].nextSession;
+          sessionEl.value = currentSessionNumber;
+          sessionInfo.textContent = `Next session for Person ${selectedPerson}`;
+          console.log(`Person ${selectedPerson} selected - Next session: ${currentSessionNumber}`);
+        }
+      });
+    } else {
+      console.error('personEl not found!');
+    }
+
 
     // New function to update person dropdown
     // New function to update person dropdown based on unlocked persons
@@ -936,25 +942,20 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
       mediaRecorder.ondataavailable = (e) => {
         if (e.data && e.data.size) recordedChunks.push(e.data);
       };
-      mediaRecorder.onstop = async () => {
-        console.log('Recording stopped.');
-        
-        const typingSpeed = calculateTypingSpeed();
-        
-        // Show forms IMMEDIATELY
-        statusEl.innerText = 'Recording complete! Please fill the Google Forms below.';
-        showFormsPrompt(typingSpeed);
+    mediaRecorder.onstop = async () => {
+      console.log('Recording stopped.');
+      
+      const typingSpeed = calculateTypingSpeed();
+      
+      // Show forms IMMEDIATELY
+      statusEl.innerText = 'Recording complete! Please fill the Google Forms below.';
+      showFormsPrompt(typingSpeed);
+      
+      // Then process and upload
+      statusEl.innerText = 'Processing and uploading...';
+      await processRecordingAndCreateZip();
+    };
 
-        console.log('🔄 Reloading participant data after upload...');
-        setTimeout(async () => {
-          await getNextParticipantId();
-          console.log('✅ Data reloaded - sessions and persons updated!');
-        }, 1500);
-        
-        // Then process and upload
-        statusEl.innerText = 'Processing and uploading...';
-        await processRecordingAndCreateZip();  // ✅ CORRECT - lowercase z
-      };
 
 
       recordingStartPerf = performance.now();
@@ -1184,6 +1185,16 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         const folderPath = `${currentParticipantId}/Person_${selectedPerson}/Session_${currentSessionNumber}`;
         statusEl.innerText = `✅ COMPLETED! WPM: ${typingSpeed.wpm} (${typingSpeed.category}) | Uploaded to ${folderPath}`;
         inputArea.value = '';
+
+        // Reload participant data NOW that upload is complete
+        console.log('🔄 Reloading participant data after successful upload...');
+        try {
+          await getNextParticipantId();
+          console.log('✅ Data reloaded - sessions and persons updated!');
+        } catch (err) {
+          console.error('Error reloading data:', err);
+        }
+
         
         showFormsPrompt(typingSpeed);
         
