@@ -944,6 +944,12 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         // Show forms IMMEDIATELY
         statusEl.innerText = 'Recording complete! Please fill the Google Forms below.';
         showFormsPrompt(typingSpeed);
+
+        console.log('🔄 Reloading participant data after upload...');
+        setTimeout(async () => {
+          await getNextParticipantId();
+          console.log('✅ Data reloaded - sessions and persons updated!');
+        }, 1500);
         
         // Then process and upload
         statusEl.innerText = 'Processing and uploading...';

@@ -136,41 +136,34 @@ export default async function handler(req, res) {
             };
           }
           
-          // Save updated counter
-          const counterBuffer = Buffer.from(JSON.stringify(counter, null, 2));
-          await updateFile(drive, counterData.id, counterBuffer, 'application/json');
-          console.log('Counter.json updated successfully');
-          console.log('Updated counter for device:', deviceId);
-          console.log('Updated person data:', participantData.persons[person]);
+    // Increment BOTH sessionCount and completedSubmissions
+    participantData.persons[person].sessionCount += 1;
+    participantData.persons[person].completedSubmissions += 1;
+    participantData.persons[person].lastAccess = new Date().toISOString();
+    participantData.lastAccess = new Date().toISOString();
 
-          // Increment completed submissions for this person
-          // Increment BOTH sessionCount and completedSubmissions
-          participantData.persons[person].sessionCount += 1;
-          participantData.persons[person].completedSubmissions += 1;
-          participantData.persons[person].lastAccess = new Date().toISOString();
-          participantData.lastAccess = new Date().toISOString();
+    const completedCount = participantData.persons[person].completedSubmissions;
+    console.log(`✅ Updated: Person ${person} now has ${completedCount} completed submissions`);
 
+    // Unlock next person if this person just completed their FIRST upload
+    if (completedCount === 1 && parseInt(person) < 5) {
+      const nextPerson = String(parseInt(person) + 1);
+      if (!participantData.persons[nextPerson]) {
+        participantData.persons[nextPerson] = {
+          sessionCount: 0,
+          completedSubmissions: 0,
+          lastAccess: null
+        };
+      }
+      console.log(`✅ Person ${nextPerson} has been unlocked!`);
+    }
 
-          const completedCount = participantData.persons[person].completedSubmissions;
-          console.log(`Updated submissions: Person ${person} now has ${completedCount} completed submissions`);
+    // NOW save the updated counter (AFTER all changes)
+    const counterBuffer = Buffer.from(JSON.stringify(counter, null, 2));
+    await updateFile(drive, counterData.id, counterBuffer, 'application/json');
+    console.log('✅ Counter.json saved successfully');
+    console.log('Updated person data:', participantData.persons[person]);
 
-          // Unlock next person if this person just completed their FIRST upload
-          if (completedCount === 1 && parseInt(person) < 5) {
-            const nextPerson = String(parseInt(person) + 1);
-            if (!participantData.persons[nextPerson]) {
-              participantData.persons[nextPerson] = {
-                sessionCount: 0,
-                completedSubmissions: 0,
-                lastAccess: null
-              };
-              console.log(`✅ Person ${nextPerson} unlocked!`);
-            }
-          }
-
-          // Save updated counter
-          const counterBuffer = Buffer.from(JSON.stringify(counter, null, 2));
-          await updateFile(drive, counterData.id, counterBuffer, 'application/json');
-          console.log('Counter.json updated successfully');
 
         }
       }
