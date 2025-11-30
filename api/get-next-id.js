@@ -147,8 +147,8 @@ export default async function handler(req, res) {
     participantData.lastAccess = new Date().toISOString();
 
     // Session number is completedSubmissions + 1 (so first session is 1)
-    const sessionNumber = (participantData.persons['1'].completedSubmissions || 0) + 1;
-
+   // Don't increment or calculate session on page load - just return current state
+    // Session will be determined by frontend based on selected person
 
     // Determine which persons are unlocked
     const unlockedPersons = [1]; // Person 1 always unlocked
@@ -171,37 +171,55 @@ export default async function handler(req, res) {
       }
     }
 
-    console.log('Unlocked persons:', unlockedPersons);
-
-    // Save updated counter file with retry logic
-    const counterBuffer = Buffer.from(JSON.stringify(counter, null, 2));
-    retryCount = 0;
-
-    while (retryCount < maxRetries) {
-      try {
-        if (counterFileId) {
-          await updateFile(drive, counterFileId, counterBuffer, 'application/json');
-        } else {
-          await uploadFile(drive, rootFolderId, 'counter.json', counterBuffer, 'application/json');
-        }
-        console.log('Counter saved successfully');
-        break; // Success
-      } catch (err) {
-        retryCount++;
-        if (retryCount >= maxRetries) {
-          console.error('Failed to save counter after retries:', err);
-          throw err;
-        }
-        await new Promise(resolve => setTimeout(resolve, 100 * retryCount));
+    // Build person data object to send to frontend
+    const personsData = {};
+    for (let i = 1; i <= 5; i++) {
+      const personKey = String(i);
+      if (participantData.persons[personKey]) {
+        personsData[personKey] = {
+          sessionCount: participantData.persons[personKey].sessionCount || 0,
+          completedSubmissions: participantData.persons[personKey].completedSubmissions || 0,
+          nextSession: (participantData.persons[personKey].completedSubmissions || 0) + 1
+        };
       }
     }
 
-    console.log(`Session assigned: ${participantId} - Session ${sessionNumber}`);
+
+    console.log('Unlocked persons:', unlockedPersons);
+
+    // Only save counter if we created a NEW participant
+    if (isNewParticipant) {
+      const counterBuffer = Buffer.from(JSON.stringify(counter, null, 2));
+      retryCount = 0;
+      while (retryCount < maxRetries) {
+        try {
+          if (counterFileId) {
+            await updateFile(drive, counterFileId, counterBuffer, 'application/json');
+          } else {
+            await uploadFile(drive, rootFolderId, 'counter.json', counterBuffer, 'application/json');
+          }
+          
+          console.log('Counter saved for new participant');
+          break; // Success
+        } catch (err) {
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            console.error('Failed to save counter after retries:', err);
+            throw err;
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 100 * retryCount));
+        }
+      }
+    }
+
+
+    console.log(`Participant loaded: ${participantId}`);
 
     // Return participant ID, session number, and unlocked persons
     res.json({ 
       participantId, 
-      sessionNumber,
+      personsData,
       unlockedPersons, // Array of unlocked person numbers [1, 2, etc.]
       currentPerson: '1', // Default to Person 1
       isNewParticipant
