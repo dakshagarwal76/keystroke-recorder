@@ -808,6 +808,26 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
           personsData: data.personsData
         });
 
+        // Update session number when person dropdown changes
+        personEl.addEventListener('change', function() {
+          const selectedPerson = personEl.value;
+          console.log('🔄 Person changed to:', selectedPerson);
+          console.log('📊 All persons data:', window.personsData);
+          
+          if (window.personsData && window.personsData[selectedPerson]) {
+            const personData = window.personsData[selectedPerson];
+            console.log(`📊 Person ${selectedPerson} data:`, personData);
+            
+            currentSessionNumber = personData.nextSession;
+            sessionEl.value = currentSessionNumber;
+            sessionInfo.textContent = `Next session for Person ${selectedPerson}`;
+            
+            console.log(`✅ Session updated to: ${currentSessionNumber}`);
+          } else {
+            console.error('❌ Person data not found for:', selectedPerson);
+          }
+        });
+
         
 
       } catch (err) {
