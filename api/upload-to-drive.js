@@ -123,6 +123,11 @@ export default async function handler(req, res) {
         
         if (counter.deviceParticipants && counter.deviceParticipants[deviceId]) {
           const participantData = counter.deviceParticipants[deviceId];
+          console.log('📊 BEFORE UPDATE:', {
+            person: person,
+            sessionCount: participantData.persons[person]?.sessionCount,
+            completedSubmissions: participantData.persons[person]?.completedSubmissions
+          });
           
           // Ensure persons object exists
           if (!participantData.persons) participantData.persons = {};
@@ -157,6 +162,13 @@ export default async function handler(req, res) {
       }
       console.log(`✅ Person ${nextPerson} has been unlocked!`);
     }
+
+    console.log('📊 AFTER UPDATE:', {
+    person: person,
+    sessionCount: participantData.persons[person]?.sessionCount,
+    completedSubmissions: participantData.persons[person]?.completedSubmissions,
+    unlockedPersons: Object.keys(participantData.persons).filter(p => participantData.persons[p].completedSubmissions >= 0)
+  });
 
     // NOW save the updated counter (AFTER all changes)
     const counterBuffer = Buffer.from(JSON.stringify(counter, null, 2));
