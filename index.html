@@ -1144,7 +1144,34 @@ Finally, we conclude with a mix: The year is 2025; version v1.0-beta includes fe
         console.log('✅ Upload successful! File ID:', uploadResult.id);
 
         // Update CSV
+        // Update CSV
         statusEl.innerText = 'Updating CSV...';
+
+        const csvData = { ... };
+        const csvResponse = await fetch(`${API_BASE}/update-csv`, { ... });
+
+        if (csvResponse.ok) {
+          console.log('CSV updated successfully');
+        }
+
+        // UPDATE COUNTER.JSON (NEW!)
+        statusEl.innerText = 'Updating session counter...';
+        const counterResponse = await fetch(`${API_BASE}/update-counter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deviceId: currentDeviceId,
+            person: selectedPerson
+          })
+        });
+
+        if (counterResponse.ok) {
+          const counterResult = await counterResponse.json();
+          console.log('✅ Counter updated:', counterResult);
+        } else {
+          console.error('Counter update failed');
+        }
+
         
         const csvData = {
           deviceId: currentDeviceId,
